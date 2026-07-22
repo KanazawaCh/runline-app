@@ -181,6 +181,20 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
 .modal-head{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;}
 .modal-table-wrap{overflow:auto; max-height:66vh; margin-top:0;}
 .modal-table-wrap table{font-variant-numeric:tabular-nums;}
+.pace-card-list{display:none; overflow-y:auto; max-height:66vh; flex-direction:column; gap:10px;}
+.pace-card{background:var(--card-2); border:1px solid var(--line); border-radius:10px; padding:12px 14px;}
+.pace-card-head{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--line);}
+.pace-card-head .mph{font-family:var(--font-display); font-size:22px; color:var(--lane-lime); letter-spacing:.5px;}
+.pace-card-head .kmh{font-family:var(--font-mono); font-size:13px; color:var(--chalk);}
+.pace-card-head .pace{font-family:var(--font-mono); font-size:12.5px; color:var(--muted); margin-left:auto;}
+.pace-card-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px 8px; font-variant-numeric:tabular-nums;}
+.pace-card-grid div{display:flex; flex-direction:column; gap:2px;}
+.pace-card-grid label{font-size:10px; color:var(--muted); letter-spacing:.04em;}
+.pace-card-grid span{font-family:var(--font-mono); font-size:13px; color:var(--chalk); font-weight:600;}
+@media (max-width:640px){
+  .modal-table-wrap{display:none;}
+  .pace-card-list{display:flex;}
+}
 </style>
 </head>
 <body>
@@ -382,6 +396,7 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
         <tbody id="paceRefTbody"></tbody>
       </table>
     </div>
+    <div class="pace-card-list" id="paceRefCards"></div>
   </div>
 </div>
 
@@ -1151,7 +1166,7 @@ exportCsvBtn.addEventListener('click', ()=>{
 /* =========================================================
    16. PACE REFERENCE TABLE (mph <-> km/h, constant-pace estimate)
    ========================================================= */
-const paceTableBtn=$('paceTableBtn'), paceModalOverlay=$('paceModalOverlay'), paceModalClose=$('paceModalClose'), paceRefTbody=$('paceRefTbody');
+const paceTableBtn=$('paceTableBtn'), paceModalOverlay=$('paceModalOverlay'), paceModalClose=$('paceModalClose'), paceRefTbody=$('paceRefTbody'), paceRefCards=$('paceRefCards');
 const MPH_TO_KMH = 1.609344;
 const REF_DISTANCES = [
   {label:'1km', km:1},
@@ -1169,18 +1184,35 @@ function formatDurationFromMinutes(totalMin){
 }
 function buildPaceRefTable(){
   paceRefTbody.innerHTML='';
+  paceRefCards.innerHTML='';
   for(let i=45;i<=160;i++){
     const mph = i/10;
     const kmh = mph*MPH_TO_KMH;
     const paceMinPerKm = 60/kmh;
+    const times = REF_DISTANCES.map(d=>formatDurationFromMinutes(paceMinPerKm*d.km));
+
     const tr=document.createElement('tr');
     tr.innerHTML = `
       <td>${mph.toFixed(1)}</td>
       <td>${kmh.toFixed(2)}</td>
       <td>${paceToStr(paceMinPerKm)}</td>
-      ${REF_DISTANCES.map(d=>`<td>${formatDurationFromMinutes(paceMinPerKm*d.km)}</td>`).join('')}
+      ${times.map(t=>`<td>${t}</td>`).join('')}
     `;
     paceRefTbody.appendChild(tr);
+
+    const card=document.createElement('div');
+    card.className='pace-card';
+    card.innerHTML = `
+      <div class="pace-card-head">
+        <span class="mph">${mph.toFixed(1)} mph</span>
+        <span class="kmh">${kmh.toFixed(2)} km/h</span>
+        <span class="pace">${paceToStr(paceMinPerKm)}/km</span>
+      </div>
+      <div class="pace-card-grid">
+        ${REF_DISTANCES.map((d,idx)=>`<div><label>${d.label}</label><span>${times[idx]}</span></div>`).join('')}
+      </div>
+    `;
+    paceRefCards.appendChild(card);
   }
 }
 paceTableBtn.addEventListener('click', ()=>{
