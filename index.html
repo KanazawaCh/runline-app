@@ -174,6 +174,13 @@ tbody tr:hover{background:var(--card-2);}
 .tooltip .tt-out{color:var(--track-red);}
 
 footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:center;}
+
+/* ---------- modal (pace reference table) ---------- */
+.modal-overlay{position:fixed; inset:0; background:rgba(6,8,12,.66); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; padding:24px; z-index:50;}
+.modal-box{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px; width:100%; max-width:860px; max-height:84vh; display:flex; flex-direction:column; gap:14px; box-shadow:0 20px 60px rgba(0,0,0,.5);}
+.modal-head{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;}
+.modal-table-wrap{overflow:auto; max-height:66vh; margin-top:0;}
+.modal-table-wrap table{font-variant-numeric:tabular-nums;}
 </style>
 </head>
 <body>
@@ -184,6 +191,7 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
     <div class="brand-sub">走った記録を、伸びとして見る。</div>
     <div class="topbar-right">
       <span class="storage-pill" id="storagePill">この端末に保存</span>
+      <button class="toggle-btn" id="paceTableBtn" type="button">速度参考表</button>
       <button class="danger-link" id="clearAllBtn">全データを削除</button>
     </div>
   </div>
@@ -349,6 +357,32 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
   </section>
 
   <footer class="note">データはこの端末のブラウザ内（localStorage）だけに保存され、どこにも送信されません。</footer>
+</div>
+
+<div class="modal-overlay hidden" id="paceModalOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="card-title">速度参考表 <span>mph → km/h・0.1mph刻み・一定ペース換算の目安タイム</span></div>
+      <button class="icon-btn" id="paceModalClose" type="button">閉じる</button>
+    </div>
+    <div class="table-wrap modal-table-wrap">
+      <table id="paceRefTable">
+        <thead>
+          <tr>
+            <th>mph</th>
+            <th>km/h</th>
+            <th>ペース (/km)</th>
+            <th>1km</th>
+            <th>5km</th>
+            <th>10km</th>
+            <th>ハーフ</th>
+            <th>フル</th>
+          </tr>
+        </thead>
+        <tbody id="paceRefTbody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <div class="tooltip" id="tooltip"></div>
@@ -1115,7 +1149,50 @@ exportCsvBtn.addEventListener('click', ()=>{
 });
 
 /* =========================================================
-   16. RENDER ALL
+   16. PACE REFERENCE TABLE (mph <-> km/h, constant-pace estimate)
+   ========================================================= */
+const paceTableBtn=$('paceTableBtn'), paceModalOverlay=$('paceModalOverlay'), paceModalClose=$('paceModalClose'), paceRefTbody=$('paceRefTbody');
+const MPH_TO_KMH = 1.609344;
+const REF_DISTANCES = [
+  {label:'1km', km:1},
+  {label:'5km', km:5},
+  {label:'10km', km:10},
+  {label:'ハーフ', km:21.0975},
+  {label:'フル', km:42.195},
+];
+function formatDurationFromMinutes(totalMin){
+  const totalSec = Math.round(totalMin*60);
+  const h = Math.floor(totalSec/3600);
+  const m = Math.floor((totalSec%3600)/60);
+  const s = totalSec%60;
+  return h>0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+}
+function buildPaceRefTable(){
+  paceRefTbody.innerHTML='';
+  for(let i=45;i<=160;i++){
+    const mph = i/10;
+    const kmh = mph*MPH_TO_KMH;
+    const paceMinPerKm = 60/kmh;
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${mph.toFixed(1)}</td>
+      <td>${kmh.toFixed(2)}</td>
+      <td>${paceToStr(paceMinPerKm)}</td>
+      ${REF_DISTANCES.map(d=>`<td>${formatDurationFromMinutes(paceMinPerKm*d.km)}</td>`).join('')}
+    `;
+    paceRefTbody.appendChild(tr);
+  }
+}
+paceTableBtn.addEventListener('click', ()=>{
+  if(!paceRefTbody.children.length) buildPaceRefTable();
+  paceModalOverlay.classList.remove('hidden');
+});
+paceModalClose.addEventListener('click', ()=>paceModalOverlay.classList.add('hidden'));
+paceModalOverlay.addEventListener('click', (e)=>{ if(e.target===paceModalOverlay) paceModalOverlay.classList.add('hidden'); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') paceModalOverlay.classList.add('hidden'); });
+
+/* =========================================================
+   17. RENDER ALL
    ========================================================= */
 function refreshAll(){
   storagePill.textContent = storageOk ? 'この端末に保存' : '保存できません（プライベートモード等）';
