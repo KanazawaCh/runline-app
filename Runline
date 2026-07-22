@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RUNLINE ― 走った記録を、伸びとして見る</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+/* =========================================================
+   DESIGN TOKENS
+   Shell: "Split Sheet" — a night training log lit like a
+   stopwatch board / track lane. Dark asphalt UI chrome.
+   The chart itself is deliberately rendered as a "paper"
+   printout (white/cream, viridis colormap, black ink) to
+   match the original matplotlib report, like a page clipped
+   onto the dashboard.
+   Color   ink #12151A · card #1D2330 · line #2A3241
+           chalk #F3F1EA · muted #8B93A3
+           lane-lime #D7F55B · amber #FFB238 · track-red #FF4B33
+           paper #F7F5EF · plot-ink #1B1B1B
+   Type    display: 'Bebas Neue'   body: 'Inter'   mono: 'IBM Plex Mono'
+   ========================================================= */
+:root{
+  --ink:#12151A;
+  --ink-raised:#171B23;
+  --card:#1D2330;
+  --card-2:#232A39;
+  --line:#2A3241;
+  --chalk:#F3F1EA;
+  --muted:#8B93A3;
+  --muted-2:#5E6779;
+  --lane-lime:#D7F55B;
+  --amber:#FFB238;
+  --track-red:#FF4B33;
+  --paper:#F7F5EF;
+  --plot-ink:#1B1B1B;
+  --plot-grid:#C9C5B8;
+  --font-display:'Bebas Neue', sans-serif;
+  --font-body:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:var(--ink); color:var(--chalk); font-family:var(--font-body); min-height:100vh; -webkit-font-smoothing:antialiased;}
+.hidden{display:none !important;}
+.app{max-width:1180px; margin:0 auto; padding:28px 24px 80px; display:flex; flex-direction:column; gap:22px;}
+
+/* ---------- topbar ---------- */
+.topbar{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px 20px; padding-bottom:22px; border-bottom:1px solid var(--line);}
+.brand{font-family:var(--font-display); font-size:34px; letter-spacing:2px; display:flex; align-items:center; gap:10px;}
+.brand-mark{width:12px;height:12px;border-radius:50%; background:linear-gradient(135deg,var(--lane-lime),var(--track-red)); display:inline-block; flex:none;}
+.brand-sub{color:var(--muted); font-size:13.5px;}
+.topbar-right{display:flex; align-items:center; gap:10px;}
+.storage-pill{font-family:var(--font-mono); font-size:11px; color:var(--muted-2); border:1px solid var(--line); padding:5px 10px; border-radius:999px;}
+.danger-link{font-size:12.5px; color:var(--muted); background:none; border:1px solid var(--line); padding:7px 14px; border-radius:999px; cursor:pointer;}
+.danger-link:hover{border-color:var(--track-red); color:var(--track-red);}
+
+/* ---------- generic card ---------- */
+.card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px;}
+.card-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px;}
+.card-title{font-family:var(--font-display); font-size:20px; letter-spacing:.5px;}
+.card-title span{color:var(--muted); font-family:var(--font-body); font-size:12px; letter-spacing:normal; margin-left:8px;}
+
+.btn{font-family:var(--font-body); font-weight:600; font-size:13.5px; border:none; border-radius:999px; padding:10px 20px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:transform .12s, filter .12s;}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--lane-lime); color:#12160A;}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-ghost{background:transparent; color:var(--chalk); border:1px solid var(--line);}
+.btn-ghost:hover{border-color:var(--muted);}
+.btn-sm{padding:6px 12px; font-size:12px; border-radius:8px;}
+.toggle-btn{font-family:var(--font-body); font-size:12.5px; color:var(--muted); background:var(--card-2); border:1px solid var(--line); padding:8px 14px; border-radius:8px; cursor:pointer;}
+.toggle-btn:hover{color:var(--chalk); border-color:var(--muted);}
+.check-pill{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--chalk); background:var(--card-2); border:1px solid var(--line); padding:8px 14px; border-radius:8px; cursor:pointer; user-select:none;}
+.check-pill input{accent-color:var(--lane-lime); cursor:pointer;}
+
+.field{display:flex; flex-direction:column; gap:6px;}
+.field label{font-size:11px; color:var(--muted); letter-spacing:.04em;}
+.field input, .field select{background:var(--card-2); border:1px solid var(--line); color:var(--chalk); font-family:var(--font-mono); font-size:13px; padding:8px 10px; border-radius:8px; width:100%;}
+.field input:focus, .field select:focus{outline:2px solid var(--lane-lime); outline-offset:1px;}
+
+/* ---------- capture card (manual / csv) ---------- */
+.capture-tabs{display:flex; gap:8px;}
+.tab-btn{font-family:var(--font-body); font-size:13px; font-weight:600; color:var(--muted); background:var(--card-2); border:1px solid var(--line); padding:8px 16px; border-radius:999px; cursor:pointer;}
+.tab-btn.active{color:#12160A; background:var(--lane-lime); border-color:var(--lane-lime);}
+.manual-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; align-items:end;}
+@media (max-width:820px){ .manual-grid{grid-template-columns:repeat(2,1fr);} }
+.opt-tag{color:var(--muted-2); font-size:10px; font-weight:400; margin-left:4px;}
+.pace-preview-field{justify-content:flex-end;}
+.pace-preview{font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--lane-lime); background:var(--card-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; text-align:center;}
+.manual-actions{display:flex; gap:8px; grid-column:span 1;}
+@media (max-width:820px){ .manual-actions{grid-column:span 2;} }
+
+.dropzone{border:1.5px dashed #3A4356; border-radius:14px; background:var(--card-2); padding:26px 20px; text-align:center; cursor:pointer; transition:border-color .15s, background .15s; margin-top:4px;}
+.dropzone.dragover{border-color:var(--lane-lime);}
+.dropzone h3{margin:0 0 4px; font-size:14.5px; font-weight:600;}
+.dropzone p{margin:0 0 14px; color:var(--muted); font-size:12.5px;}
+.dropzone input[type=file]{display:none;}
+.dz-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+
+.mapping-card{padding:14px; margin-top:14px; background:var(--card-2); border:1px solid var(--line); border-radius:10px;}
+.mapping-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+@media (max-width:760px){ .mapping-grid{grid-template-columns:repeat(2,1fr);} }
+.mapping-hint{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.6;}
+
+.empty-hint{margin-top:16px; padding:16px; border:1px dashed var(--line); border-radius:10px; color:var(--muted); font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;}
+
+.err-msg{margin-top:12px; font-size:12.5px; color:var(--track-red); font-family:var(--font-mono);}
+.toast{margin-top:12px; font-size:12.5px; color:var(--lane-lime); font-family:var(--font-mono);}
+
+/* ---------- filter card ---------- */
+.filter-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+@media (max-width:900px){ .filter-grid{grid-template-columns:repeat(2,1fr);} }
+.filter-status{margin-top:12px; font-size:12.5px; color:var(--muted); font-family:var(--font-mono);}
+
+/* ---------- stats ---------- */
+.stats-row{display:grid; grid-template-columns:repeat(6,1fr); gap:14px;}
+@media (max-width:900px){ .stats-row{grid-template-columns:repeat(2,1fr);} }
+.stat-card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px;}
+.stat-label{font-size:11px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin-bottom:8px;}
+.stat-value{font-family:var(--font-mono); font-size:22px; font-weight:600; color:var(--chalk);}
+.stat-value small{font-size:12px; color:var(--muted); font-weight:500; margin-left:2px;}
+
+/* ---------- goal lane ---------- */
+.goal-top{display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px 24px; margin-bottom:18px;}
+.goal-figures{display:flex; align-items:baseline; gap:10px;}
+.goal-figures .cur{font-family:var(--font-display); font-size:40px; color:var(--lane-lime); letter-spacing:.5px;}
+.goal-figures .slash{color:var(--muted-2); font-size:20px;}
+.goal-figures .tgt{font-family:var(--font-mono); font-size:16px; color:var(--muted);}
+.goal-pct{font-family:var(--font-mono); font-size:15px; color:var(--chalk); background:var(--card-2); padding:6px 12px; border-radius:999px; border:1px solid var(--line);}
+.lane{position:relative; height:46px; border-radius:10px; background:repeating-linear-gradient(90deg, #2E3646 0 26px, transparent 26px 46px), var(--card-2); border:1px solid var(--line); overflow:hidden;}
+.lane-fill{position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg, var(--lane-lime), var(--amber) 70%, var(--track-red)); border-radius:10px 0 0 10px; transition:width .6s cubic-bezier(.2,.8,.2,1);}
+.lane-runner{position:absolute; top:50%; width:26px; height:26px; transform:translate(-50%,-50%); background:var(--ink); border:2px solid var(--chalk); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; transition:left .6s cubic-bezier(.2,.8,.2,1);}
+.lane-finish{position:absolute; right:0; top:0; bottom:0; width:3px; background:repeating-linear-gradient(180deg,var(--chalk) 0 6px, transparent 6px 12px); opacity:.5;}
+.goal-controls{margin-top:18px; display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+@media (max-width:760px){ .goal-controls{grid-template-columns:repeat(2,1fr);} }
+
+/* ---------- chart card ---------- */
+.chart-toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;}
+.toolbar-spacer{flex:1;}
+.adv-panel{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; padding:14px; margin-bottom:16px; background:var(--card-2); border:1px solid var(--line); border-radius:10px;}
+@media (max-width:900px){ .adv-panel{grid-template-columns:repeat(3,1fr);} }
+@media (max-width:560px){ .adv-panel{grid-template-columns:repeat(2,1fr);} }
+
+.chart-wrap{width:100%; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:10px 10px 4px; position:relative;}
+svg#chart{width:100%; height:auto; display:block; font-family:var(--font-mono);}
+
+.chart-legend{display:flex; flex-wrap:wrap; gap:18px; margin-top:14px; font-size:12px; color:var(--muted);}
+.chart-legend .item{display:flex; align-items:center; gap:7px;}
+.chart-legend .swatch{width:16px; height:3px; border-radius:2px; display:inline-block;}
+.chart-legend .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+.legend-gradient{width:74px; height:9px; border-radius:5px; background:linear-gradient(90deg,#440154,#3b528b,#21918c,#5ec962,#fde725); display:inline-block;}
+
+/* ---------- table ---------- */
+.table-toolbar{display:flex; align-items:center; gap:10px;}
+.table-wrap{overflow-x:auto; margin-top:6px; border:1px solid var(--line); border-radius:10px;}
+table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12.5px;}
+thead th{position:sticky; top:0; background:var(--card-2); color:var(--muted); text-align:left; padding:10px 12px; font-weight:600; cursor:pointer; white-space:nowrap; border-bottom:1px solid var(--line);}
+thead th:hover{color:var(--chalk);}
+tbody td{padding:8px 12px; border-bottom:1px solid var(--line); color:var(--chalk); white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--card-2);}
+.row-actions{display:flex; gap:6px;}
+.icon-btn{background:none; border:1px solid var(--line); color:var(--muted); border-radius:6px; padding:4px 8px; cursor:pointer; font-size:12px;}
+.icon-btn:hover{color:var(--chalk); border-color:var(--muted);}
+.icon-btn.danger:hover{color:var(--track-red); border-color:var(--track-red);}
+.out-badge{color:var(--track-red);}
+.table-empty{padding:24px; text-align:center; color:var(--muted); font-size:13px;}
+
+.tooltip{position:absolute; pointer-events:none; background:#0C0E12; border:1px solid var(--line); border-radius:8px; padding:9px 12px; font-family:var(--font-mono); font-size:12px; color:var(--chalk); line-height:1.6; box-shadow:0 8px 24px rgba(0,0,0,.4); opacity:0; transition:opacity .1s; z-index:20; white-space:nowrap;}
+.tooltip .tt-date{color:var(--muted); font-size:11px;}
+.tooltip .tt-out{color:var(--track-red);}
+
+footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:center;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span>RUNLINE</div>
+    <div class="brand-sub">走った記録を、伸びとして見る。</div>
+    <div class="topbar-right">
+      <span class="storage-pill" id="storagePill">この端末に保存</span>
+      <button class="danger-link" id="clearAllBtn">全データを削除</button>
+    </div>
+  </div>
+
+  <!-- ============ CAPTURE (manual entry / csv import) ============ -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">記録の追加 <span>手入力、またはCSVから取り込み</span></div>
+      <div class="capture-tabs">
+        <button class="tab-btn active" id="tabBtnManual" type="button">手入力</button>
+        <button class="tab-btn" id="tabBtnCsv" type="button">CSVインポート</button>
+      </div>
+    </div>
+
+    <div id="tabManual">
+      <form class="manual-grid" id="manualForm">
+        <div class="field"><label for="mDate">日付</label><input type="date" id="mDate" required></div>
+        <div class="field"><label for="mDist">距離 (km)</label><input type="number" id="mDist" step="0.1" min="0" required></div>
+        <div class="field"><label for="mDurH">時間：時</label><input type="number" id="mDurH" min="0" max="23" value="0"></div>
+        <div class="field"><label for="mDurM">時間：分</label><input type="number" id="mDurM" min="0" max="59" required></div>
+        <div class="field"><label for="mDurS">時間：秒</label><input type="number" id="mDurS" min="0" max="59" value="0"></div>
+        <div class="field"><label for="mHr">平均心拍数 <span class="opt-tag">任意</span></label><input type="number" id="mHr" min="0" max="250" placeholder="例: 152"></div>
+        <div class="field"><label for="mInOut">場所</label>
+          <select id="mInOut"><option value="in">屋内</option><option value="out">屋外</option></select>
+        </div>
+        <div class="field pace-preview-field">
+          <label>ペース（自動計算）</label>
+          <div class="pace-preview" id="pacePreview">--'--"/km</div>
+        </div>
+        <div class="manual-actions">
+          <button type="submit" class="btn btn-primary" id="manualSubmitBtn">記録を追加</button>
+          <button type="button" class="btn btn-ghost hidden" id="manualCancelBtn">キャンセル</button>
+        </div>
+      </form>
+      <div class="err-msg hidden" id="manualErr"></div>
+    </div>
+
+    <div id="tabCsv" class="hidden">
+      <div class="dropzone" id="dropzone">
+        <h3>CSVをドロップ、または選択</h3>
+
+        <p>取り込んだ内容は既存の記録に追加されます（端末内で処理・送信されません）</p>
+        <div class="dz-actions">
+          <button class="btn btn-primary btn-sm" id="browseBtn" type="button">ファイルを選ぶ</button>
+        </div>
+        <input type="file" id="fileInput" accept=".csv,text/csv">
+      </div>
+      <div class="mapping-card hidden" id="mappingCard">
+        <div class="mapping-grid">
+          <div class="field"><label for="mapDate">日付列</label><select id="mapDate"></select></div>
+          <div class="field"><label for="mapDist">距離列</label><select id="mapDist"></select></div>
+          <div class="field"><label for="mapPace">ペース列</label><select id="mapPace"></select></div>
+          <div class="field"><label for="mapInOut">In/Out列（任意）</label><select id="mapInOut"></select></div>
+          <div class="field"><label for="mapHr">平均心拍数列（任意）</label><select id="mapHr"></select></div>
+        </div>
+        <div class="mapping-hint">列名から自動検出しています。違う場合は選び直してから反映してください。</div>
+        <div style="margin-top:12px;"><button class="btn btn-primary btn-sm" id="applyMapBtn" type="button">この対応で取り込む</button></div>
+      </div>
+      <div class="err-msg hidden" id="csvErr"></div>
+      <div class="toast hidden" id="csvToast"></div>
+    </div>
+
+
+    <div class="empty-hint hidden" id="emptyHint">
+      <span>まだ記録がありません。上のフォームから追加するか、サンプルで試せます。</span>
+      <button class="btn btn-ghost btn-sm" id="sampleBtn" type="button">サンプルを読み込む</button>
+    </div>
+  </section>
+
+  <!-- ============ FILTER ============ -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">フィルタ <span>グラフと一覧に反映されます</span></div>
+      <button class="toggle-btn" id="filterResetBtn" type="button">条件をクリア</button>
+    </div>
+    <div class="filter-grid">
+      <div class="field"><label for="fDateStart">期間（開始）</label><input type="date" id="fDateStart"></div>
+      <div class="field"><label for="fDateEnd">期間（終了）</label><input type="date" id="fDateEnd"></div>
+      <div class="field"><label for="fDistMin">距離 最小 (km)</label><input type="number" id="fDistMin" step="0.5" placeholder="指定なし"></div>
+      <div class="field"><label for="fDistMax">距離 最大 (km)</label><input type="number" id="fDistMax" step="0.5" placeholder="指定なし"></div>
+      <div class="field"><label for="fPaceMin">ペース 最速 (分/km)</label><input type="number" id="fPaceMin" step="0.1" placeholder="指定なし"></div>
+      <div class="field"><label for="fPaceMax">ペース 最遅 (分/km)</label><input type="number" id="fPaceMax" step="0.1" placeholder="指定なし"></div>
+      <div class="field"><label for="fInOut">屋内 / 屋外</label>
+        <select id="fInOut"><option value="all">すべて</option><option value="out">屋外のみ</option><option value="in">屋内のみ</option></select>
+      </div>
+    </div>
+    <div class="filter-status" id="filterStatus"></div>
+  </section>
+
+  <section class="stats-row" id="statsRow"></section>
+
+  <section class="card">
+    <div class="card-head"><div class="card-title">GOAL LANE <span id="goalRangeLabel"></span></div></div>
+    <div class="goal-top">
+      <div class="goal-figures">
+        <span class="cur" id="goalCur">0.0</span><span class="slash">/</span><span class="tgt" id="goalTgt">— km</span>
+      </div>
+      <div class="goal-pct" id="goalPct">0%</div>
+    </div>
+    <div class="lane">
+      <div class="lane-fill" id="laneFill" style="width:0%"></div>
+      <div class="lane-runner" id="laneRunner" style="left:0%">🏃</div>
+      <div class="lane-finish"></div>
+    </div>
+    <div class="goal-controls">
+      <div class="field"><label for="goalLabel">目標名</label><input type="text" id="goalLabel" value="今期の目標"></div>
+      <div class="field"><label for="goalTarget">目標距離 (km)</label><input type="number" id="goalTarget" step="1" min="1"></div>
+      <div class="field"><label for="goalStart">集計開始日</label><input type="date" id="goalStart"></div>
+      <div class="field"><label for="goalEnd">集計終了日</label><input type="date" id="goalEnd"></div>
+    </div>
+  </section>
+
+  <!-- ============ CHART (matplotlib-style) ============ -->
+  <section class="card">
+    <div class="card-head"><div class="card-title">PACE / DISTANCE <span>元のグラフと同じ配色・レイアウト</span></div></div>
+    <div class="chart-toolbar">
+      <label class="check-pill"><input type="checkbox" id="toggleMA" checked> 7日移動平均</label>
+      <label class="check-pill"><input type="checkbox" id="toggleReg" checked> 回帰直線</label>
+      <div class="toolbar-spacer"></div>
+      <button class="toggle-btn" id="advToggle" type="button">軸の詳細設定</button>
+      <button class="toggle-btn" id="pngBtn" type="button">PNG書き出し</button>
+    </div>
+    <div class="adv-panel hidden" id="advPanel">
+      <div class="field"><label for="paceMin">ペース上限(速)</label><input type="number" id="paceMin" step="0.1"></div>
+      <div class="field"><label for="paceMax">ペース下限(遅)</label><input type="number" id="paceMax" step="0.1"></div>
+      <div class="field"><label for="distMax">週間距離 上限(km)</label><input type="number" id="distMax" step="5"></div>
+      <div class="field"><label for="cmapMin">配色 最短(km)</label><input type="number" id="cmapMin" step="0.5"></div>
+      <div class="field"><label for="cmapMax">配色 最長(km)</label><input type="number" id="cmapMax" step="0.5"></div>
+      <div class="field" style="grid-column:1/-1;"><button class="btn btn-ghost btn-sm" id="autoRangeBtn" type="button">自動調整</button></div>
+    </div>
+    <div class="chart-wrap"><svg id="chart" viewBox="0 0 1040 560"></svg></div>
+    <div class="chart-legend">
+      <div class="item"><span class="legend-gradient"></span>距離（viridis配色）</div>
+      <div class="item"><span class="dot" style="border:2px solid var(--track-red); background:transparent;"></span>屋外 (Out)</div>
+      <div class="item"><span class="swatch" style="background:#111;"></span>7日移動平均</div>
+      <div class="item"><span class="swatch" style="background:#D62728;"></span>回帰直線（トレンド）</div>
+      <div class="item"><span class="swatch" style="background:#7B4FA0; height:8px; border-radius:2px;"></span>週間距離（棒）</div>
+    </div>
+  </section>
+
+  <!-- ============ TABLE ============ -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">記録一覧 <span id="tableCount"></span></div>
+      <button class="toggle-btn" id="exportCsvBtn" type="button">表示中のデータをCSVで書き出す</button>
+    </div>
+    <div class="err-msg hidden" id="tableMsg"></div>
+    <div class="table-wrap">
+      <table id="recordsTable">
+        <thead>
+          <tr>
+            <th data-key="date">日付</th>
+            <th data-key="isOut">場所</th>
+            <th data-key="distance">距離 (km)</th>
+            <th data-key="pace">ペース (/km)</th>
+            <th data-key="avgHr">平均心拍数</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="recordsTbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="note">データはこの端末のブラウザ内（localStorage）だけに保存され、どこにも送信されません。</footer>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+(function(){
+
+/* =========================================================
+   1. CORE PARSING / STATS LOGIC
+   ========================================================= */
+function parsePaceToMinutes(raw){
+  if(raw===null||raw===undefined) return NaN;
+  let s=String(raw).trim();
+  if(s==='') return NaN;
+  s=s.replace(/\/km/i,'').trim();
+  let m,sec;
+  if(s.includes("'")){ [m,sec]=s.split("'"); }
+  else if(s.includes(':')){ [m,sec]=s.split(':'); }
+  else if(!isNaN(parseFloat(s))){ return parseFloat(s); }
+  else { return NaN; }
+  sec=(sec||'0').replace(/["″]/g,'').trim();
+  m=(m||'').trim();
+  const mi=parseInt(m,10), si=parseInt(sec,10);
+  if(isNaN(mi)||isNaN(si)) return NaN;
+  return mi+si/60;
+}
+function paceToStr(min){
+  if(min===null||min===undefined||isNaN(min)) return '--\'--"';
+  let m=Math.floor(min), s=Math.round((min-m)*60);
+  if(s===60){ s=0; m+=1; }
+  return m+"'"+String(s).padStart(2,'0')+'"';
+}
+function parseDateFlexible(raw){
+  if(raw===null||raw===undefined) return null;
+  const s=String(raw).trim();
+  if(s==='') return null;
+  const normalized=s.replace(/\//g,'-');
+  let d=new Date(normalized);
+  if(!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  d=new Date(s);
+  if(!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return null;
+}
+function getWeekStartSaturday(date){
+  const day=date.getDay(); const diff=(day-6+7)%7;
+  const ws=new Date(date); ws.setDate(date.getDate()-diff); ws.setHours(0,0,0,0);
+  return ws;
+}
+function computeWeeklyDistance(records){
+  const map=new Map();
+  for(const r of records){ const ws=getWeekStartSaturday(r.date); const key=ws.getTime(); map.set(key,(map.get(key)||0)+r.distance); }
+  return Array.from(map.entries()).map(([t,dist])=>({weekStart:new Date(t),dist})).sort((a,b)=>a.weekStart-b.weekStart);
+}
+function computeMonthlyDistance(records){
+  const map=new Map();
+  for(const r of records){ const key=r.date.getFullYear()+'-'+r.date.getMonth(); map.set(key,(map.get(key)||0)+r.distance); }
+  return Array.from(map.entries()).map(([k,dist])=>{ const [y,m]=k.split('-').map(Number); return {monthStart:new Date(y,m,1), dist}; }).sort((a,b)=>a.monthStart-b.monthStart);
+}
+function computeRollingMean7d(records){
+  const sorted=[...records].sort((a,b)=>a.date-b.date);
+  const MS_7D=7*24*3600*1000; const out=[]; let start=0;
+  for(let i=0;i<sorted.length;i++){
+    const t=sorted[i].date.getTime();
+    while(sorted[start].date.getTime()<=t-MS_7D) start++;
+    let sum=0,cnt=0;
+    for(let j=start;j<=i;j++){ if(!isNaN(sorted[j].pace)){ sum+=sorted[j].pace; cnt++; } }
+    out.push({date:sorted[i].date, avg:cnt?sum/cnt:NaN});
+  }
+  return out;
+}
+function linearRegression(points){
+  const n=points.length;
+  if(n<2) return {slope:0, intercept: points[0]?points[0].y:0};
+  let sx=0,sy=0,sxx=0,sxy=0;
+  for(const p of points){ sx+=p.x; sy+=p.y; sxx+=p.x*p.x; sxy+=p.x*p.y; }
+  const denom=(n*sxx-sx*sx);
+  const slope=denom===0?0:(n*sxy-sx*sy)/denom;
+  const intercept=(sy-slope*sx)/n;
+  return {slope, intercept};
+}
+
+/* =========================================================
+   2. RECORD STORE (id, date, distance, pace, isOut) + localStorage
+   ========================================================= */
+const STORAGE_KEY='runline_records_v1';
+function makeId(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+function loadStore(){
+  try{
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if(!raw) return [];
+    const arr = JSON.parse(raw);
+    return arr.map(r=>({id:r.id, date:new Date(r.date), distance:r.distance, pace:r.pace, isOut:!!r.isOut, avgHr:(r.avgHr!=null?r.avgHr:null)}));
+  }catch(e){ return []; }
+}
+let storageOk = true;
+function saveStore(records){
+  try{
+    const arr = records.map(r=>({id:r.id, date:r.date.toISOString(), distance:r.distance, pace:r.pace, isOut:r.isOut, avgHr:(r.avgHr!=null?r.avgHr:null)}));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    storageOk = true;
+  }catch(e){ storageOk = false; }
+}
+
+/* =========================================================
+   3. STATE
+   ========================================================= */
+const state = {
+  records: loadStore(),
+  editingId: null,
+  headers: [], rawRows: [], mapping:{date:null,dist:null,pace:null,inout:null,hr:null},
+  paceRange: null, distMaxOverride: null, cmapRange: null,
+  chartToggles: {showMA:true, showReg:true},
+  filter: {dateStart:null, dateEnd:null, distMin:null, distMax:null, paceMin:null, paceMax:null, inout:'all'},
+  sort: {key:'date', dir:'desc'},
+  goal: {label:'今期の目標', target:null, start:null, end:null}
+};
+
+function recordMatchesFilter(r, filter){
+  if(filter.dateStart && r.date < filter.dateStart) return false;
+  if(filter.dateEnd && r.date > filter.dateEnd) return false;
+  if(filter.distMin!=null && r.distance < filter.distMin) return false;
+  if(filter.distMax!=null && r.distance > filter.distMax) return false;
+  if(filter.paceMin!=null && r.pace < filter.paceMin) return false;
+  if(filter.paceMax!=null && r.pace > filter.paceMax) return false;
+  if(filter.inout==='out' && !r.isOut) return false;
+  if(filter.inout==='in' && r.isOut) return false;
+  return true;
+}
+function getFilteredRecords(){
+  return state.records.filter(r=>recordMatchesFilter(r, state.filter)).sort((a,b)=>a.date-b.date);
+}
+function isDup(a,b){
+  return a.date.getTime()===b.date.getTime() && Math.abs(a.distance-b.distance)<0.001 && Math.abs(a.pace-b.pace)<0.001 && !!a.isOut===!!b.isOut;
+}
+function mergeImportDedupe(existing, incoming){
+  const merged = existing.slice(); let added=0, skipped=0;
+  for(const rec of incoming){
+    const dup = merged.some(e=>isDup(e,rec));
+    if(dup){ skipped++; continue; }
+    merged.push(Object.assign({id:makeId()}, rec));
+    added++;
+  }
+  return {merged, added, skipped};
+}
+
+function buildSampleRecords(){
+  const recs=[]; let seed=42;
+  function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+  let d=new Date(2025,9,1); const end=new Date(2026,6,19); let pace=6.4;
+  while(d<=end){
+    if(rnd()<0.55){
+      pace += -0.01 - rnd()*0.03;
+      const p = Math.max(4.0, pace + (rnd()-0.5)*0.5);
+      const dist = Math.round((3+rnd()*11)*10)/10;
+      const isOut = rnd()<0.15;
+      const avgHr = Math.round(135 + (7.5-p)*6 + (rnd()-0.5)*10);
+      recs.push({id:makeId(), date:new Date(d.getFullYear(),d.getMonth(),d.getDate()), distance:dist, pace:p, isOut, avgHr});
+    }
+    d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1);
+  }
+  return recs;
+}
+
+/* =========================================================
+   4. DOM REFS
+   ========================================================= */
+const $ = (id)=>document.getElementById(id);
+const storagePill=$('storagePill'), clearAllBtn=$('clearAllBtn');
+const tabBtnManual=$('tabBtnManual'), tabBtnCsv=$('tabBtnCsv'), tabManual=$('tabManual'), tabCsv=$('tabCsv');
+const manualForm=$('manualForm'), mDate=$('mDate'), mDist=$('mDist'), mDurH=$('mDurH'), mDurM=$('mDurM'), mDurS=$('mDurS'), mHr=$('mHr'), mInOut=$('mInOut'), pacePreview=$('pacePreview');
+const manualSubmitBtn=$('manualSubmitBtn'), manualCancelBtn=$('manualCancelBtn'), manualErr=$('manualErr');
+const dropzone=$('dropzone'), fileInput=$('fileInput'), browseBtn=$('browseBtn');
+const mappingCard=$('mappingCard'), mapDate=$('mapDate'), mapDist=$('mapDist'), mapPace=$('mapPace'), mapInOut=$('mapInOut'), mapHr=$('mapHr'), applyMapBtn=$('applyMapBtn');
+const csvErr=$('csvErr'), csvToast=$('csvToast');
+const emptyHint=$('emptyHint'), sampleBtn=$('sampleBtn');
+
+const fDateStart=$('fDateStart'), fDateEnd=$('fDateEnd'), fDistMin=$('fDistMin'), fDistMax=$('fDistMax'), fPaceMin=$('fPaceMin'), fPaceMax=$('fPaceMax'), fInOut=$('fInOut');
+const filterResetBtn=$('filterResetBtn'), filterStatus=$('filterStatus');
+
+const statsRow=$('statsRow');
+const goalLabelInp=$('goalLabel'), goalTargetInp=$('goalTarget'), goalStartInp=$('goalStart'), goalEndInp=$('goalEnd');
+const goalCur=$('goalCur'), goalTgt=$('goalTgt'), goalPct=$('goalPct'), laneFill=$('laneFill'), laneRunner=$('laneRunner'), goalRangeLabel=$('goalRangeLabel');
+
+const advPanel=$('advPanel'), advToggle=$('advToggle'), autoRangeBtn=$('autoRangeBtn');
+const toggleMA=$('toggleMA'), toggleReg=$('toggleReg');
+toggleMA.addEventListener('change', ()=>{ state.chartToggles.showMA = toggleMA.checked; renderChart(); });
+toggleReg.addEventListener('change', ()=>{ state.chartToggles.showReg = toggleReg.checked; renderChart(); });
+const paceMinInp=$('paceMin'), paceMaxInp=$('paceMax'), distMaxInp=$('distMax'), cmapMinInp=$('cmapMin'), cmapMaxInp=$('cmapMax');
+const pngBtn=$('pngBtn');
+const tooltip=$('tooltip');
+
+const tableCount=$('tableCount'), recordsTbody=$('recordsTbody'), exportCsvBtn=$('exportCsvBtn'), tableMsg=$('tableMsg');
+
+/* =========================================================
+   5. TABS
+   ========================================================= */
+tabBtnManual.addEventListener('click', ()=>{ tabBtnManual.classList.add('active'); tabBtnCsv.classList.remove('active'); tabManual.classList.remove('hidden'); tabCsv.classList.add('hidden'); });
+tabBtnCsv.addEventListener('click', ()=>{ tabBtnCsv.classList.add('active'); tabBtnManual.classList.remove('active'); tabCsv.classList.remove('hidden'); tabManual.classList.add('hidden'); });
+
+/* =========================================================
+   6. MANUAL ENTRY (distance + duration -> pace is auto-computed)
+   ========================================================= */
+function todayInputStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+mDate.value = todayInputStr();
+
+function computePaceFromInputs(){
+  const dist = parseFloat(mDist.value);
+  const h = parseFloat(mDurH.value)||0, m = parseFloat(mDurM.value)||0, s = parseFloat(mDurS.value)||0;
+  const totalMin = h*60 + m + s/60;
+  if(!dist || dist<=0 || totalMin<=0) return NaN;
+  return totalMin / dist;
+}
+function updatePacePreview(){
+  const pace = computePaceFromInputs();
+  pacePreview.textContent = isNaN(pace) ? "--'--\"/km" : paceToStr(pace)+'/km';
+}
+[mDist,mDurH,mDurM,mDurS].forEach(inp=>inp.addEventListener('input', updatePacePreview));
+
+manualForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  manualErr.classList.add('hidden');
+  const d = parseDateFlexible(mDate.value);
+  const dist = parseFloat(mDist.value);
+  const pace = computePaceFromInputs();
+  if(!d || isNaN(dist) || dist<=0 || isNaN(pace) || pace<=0){
+    manualErr.textContent='日付・距離・時間を正しく入力してください（時間はすべて0にはできません）。';
+    manualErr.classList.remove('hidden');
+    return;
+  }
+  const hrRaw = mHr.value.trim();
+  const avgHr = hrRaw==='' ? null : parseFloat(hrRaw);
+  const isOut = mInOut.value==='out';
+
+  if(state.editingId){
+    const rec = state.records.find(r=>r.id===state.editingId);
+    if(rec){ rec.date=d; rec.distance=dist; rec.pace=pace; rec.isOut=isOut; rec.avgHr=(avgHr!=null && !isNaN(avgHr))?avgHr:null; }
+    exitEditMode();
+  }else{
+    state.records.push({id:makeId(), date:d, distance:dist, pace:pace, isOut:isOut, avgHr:(avgHr!=null && !isNaN(avgHr))?avgHr:null});
+  }
+  saveStore(state.records);
+  manualForm.reset();
+  mDate.value = todayInputStr();
+  updatePacePreview();
+  refreshAll();
+});
+
+manualCancelBtn.addEventListener('click', exitEditMode);
+
+function enterEditMode(id){
+  const rec = state.records.find(r=>r.id===id);
+  if(!rec) return;
+  state.editingId = id;
+  mDate.value = fmtDateInput(rec.date);
+  mDist.value = rec.distance;
+  const totalMin = rec.pace * rec.distance;
+  mDurH.value = Math.floor(totalMin/60);
+  mDurM.value = Math.floor(totalMin%60);
+  mDurS.value = Math.round((totalMin - Math.floor(totalMin))*60);
+  mHr.value = (rec.avgHr!=null) ? rec.avgHr : '';
+  mInOut.value = rec.isOut ? 'out' : 'in';
+  manualSubmitBtn.textContent = '記録を更新';
+  manualCancelBtn.classList.remove('hidden');
+  tabBtnManual.click();
+  manualForm.scrollIntoView({behavior:'smooth', block:'center'});
+  updatePacePreview();
+}
+function exitEditMode(){
+  state.editingId = null;
+  manualSubmitBtn.textContent = '記録を追加';
+  manualCancelBtn.classList.add('hidden');
+  manualForm.reset();
+  mDate.value = todayInputStr();
+  updatePacePreview();
+}
+
+function deleteRecordById(id){
+  if(!window.confirm('この記録を削除しますか？')) return;
+  state.records = state.records.filter(r=>r.id!==id);
+  if(state.editingId===id) exitEditMode();
+  saveStore(state.records);
+  refreshAll();
+}
+
+/* =========================================================
+   7. CSV IMPORT (merged into the same store)
+   ========================================================= */
+browseBtn.addEventListener('click', ()=>fileInput.click());
+dropzone.addEventListener('click', (e)=>{ if(e.target===browseBtn) return; fileInput.click(); });
+fileInput.addEventListener('change', (e)=>{ if(e.target.files[0]) loadFile(e.target.files[0]); });
+['dragover','dragenter'].forEach(ev=>dropzone.addEventListener(ev,(e)=>{ e.preventDefault(); dropzone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,(e)=>{ e.preventDefault(); dropzone.classList.remove('dragover'); }));
+dropzone.addEventListener('drop',(e)=>{ const f=e.dataTransfer.files[0]; if(f) loadFile(f); });
+
+function loadFile(file){
+  hideCsvMsgs();
+  const reader=new FileReader();
+  reader.onload=(e)=>parseCsvText(e.target.result);
+  reader.onerror=()=>showCsvErr('ファイルを読み込めませんでした。');
+  reader.readAsText(file, 'UTF-8');
+}
+function showCsvErr(msg){ csvErr.textContent=msg; csvErr.classList.remove('hidden'); csvToast.classList.add('hidden'); }
+function showCsvToast(msg){ csvToast.textContent=msg; csvToast.classList.remove('hidden'); csvErr.classList.add('hidden'); }
+function hideCsvMsgs(){ csvErr.classList.add('hidden'); csvToast.classList.add('hidden'); }
+
+function parseCsvText(text){
+  const res = Papa.parse(text.replace(/^\uFEFF/,''), {header:true, skipEmptyLines:true});
+  if(!res.data || !res.data.length){ showCsvErr('データ行が見つかりませんでした。'); return; }
+  state.headers = res.meta.fields || Object.keys(res.data[0]);
+  state.rawRows = res.data;
+  state.mapping = autoDetectColumns(state.headers, state.rawRows);
+  populateMappingSelects();
+  mappingCard.classList.remove('hidden');
+  const recs = buildRecordsFromMapping();
+  if(recs.length){ importRecords(recs); }
+  else { showCsvErr('列を自動検出できませんでした。下の「列の対応」から手動で指定してください。'); }
+}
+
+function autoDetectColumns(headers, rows){
+  const sample = rows.slice(0, Math.min(30, rows.length));
+  function scoreDate(h){ let ok=0; for(const r of sample){ if(parseDateFlexible(r[h])) ok++; } return ok/sample.length; }
+  function scorePace(h){ let ok=0; for(const r of sample){ const v=String(r[h]||''); if((v.includes("'")||v.includes(':')) && !isNaN(parsePaceToMinutes(v))) ok++; } return ok/sample.length; }
+  function scoreDist(h){ let ok=0; for(const r of sample){ const v=String(r[h]||'').trim(); if(v!=='' && !v.includes("'") && !v.includes(':') && !isNaN(parseFloat(v))) ok++; } return ok/sample.length; }
+  let date=headers.find(h=>/^date$|日付|年月日/i.test(h)) || null;
+  let pace=headers.find(h=>/pace|ペース|mm.?ss|min.*km/i.test(h)) || null;
+  let dist=headers.find(h=>/(dist|距離).*km|km.*(dist|距離)|distance|^距離$/i.test(h)) || null;
+  let inout=headers.find(h=>/in.?\/?.?out|in\/out|区分|場所/i.test(h)) || null;
+  let hr=headers.find(h=>/hr|heart|心拍/i.test(h)) || null;
+  if(!date) date = headers.reduce((best,h)=>{ const s=scoreDate(h); return (!best||s>best.s)?{h,s}:best; }, null)?.h || null;
+  if(!pace) pace = headers.reduce((best,h)=>{ if(h===date) return best; const s=scorePace(h); return (!best||s>best.s)?{h,s}:best; }, null)?.h || null;
+  if(!dist) dist = headers.reduce((best,h)=>{ if(h===date||h===pace) return best; const s=scoreDist(h); return (!best||s>best.s)?{h,s}:best; }, null)?.h || null;
+  return {date, dist, pace, inout, hr};
+}
+function populateMappingSelects(){
+  const opts=(sel,current,allowNone)=>{
+    sel.innerHTML='';
+    if(allowNone){ const o=document.createElement('option'); o.value=''; o.textContent='（なし）'; sel.appendChild(o); }
+    state.headers.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; if(h===current) o.selected=true; sel.appendChild(o); });
+  };
+  opts(mapDate, state.mapping.date, false);
+  opts(mapDist, state.mapping.dist, false);
+  opts(mapPace, state.mapping.pace, false);
+  opts(mapInOut, state.mapping.inout, true);
+  opts(mapHr, state.mapping.hr, true);
+}
+applyMapBtn.addEventListener('click', ()=>{
+  state.mapping = { date:mapDate.value, dist:mapDist.value, pace:mapPace.value, inout: mapInOut.value||null, hr: mapHr.value||null };
+  const recs = buildRecordsFromMapping();
+  if(!recs.length){ showCsvErr('選択した列からデータを解釈できませんでした。'); return; }
+  importRecords(recs);
+});
+function buildRecordsFromMapping(){
+  const {date,dist,pace,inout,hr} = state.mapping;
+  if(!date || !dist || !pace) return [];
+  const recs=[];
+  for(const r of state.rawRows){
+    const d=parseDateFlexible(r[date]);
+    const distVal=parseFloat(String(r[dist]).replace(/[^\d.\-]/g,''));
+    const paceVal=parsePaceToMinutes(r[pace]);
+    if(!d || isNaN(distVal) || isNaN(paceVal)) continue;
+    const isOut = inout ? /out|屋外|野外/i.test(String(r[inout]||'')) : false;
+    let avgHr = null;
+    if(hr){ const hv=parseFloat(String(r[hr]).replace(/[^\d.\-]/g,'')); if(!isNaN(hv) && hv>0) avgHr=hv; }
+    recs.push({date:d, distance:distVal, pace:paceVal, isOut, avgHr});
+  }
+  return recs;
+}
+function importRecords(recs){
+  const {merged, added, skipped} = mergeImportDedupe(state.records, recs);
+  state.records = merged;
+  saveStore(state.records);
+  showCsvToast(`${added}件を取り込みました${skipped?`（重複${skipped}件はスキップ）`:''}。`);
+  refreshAll();
+}
+
+/* =========================================================
+   8. SAMPLE / CLEAR
+   ========================================================= */
+sampleBtn.addEventListener('click', ()=>{
+  state.records = buildSampleRecords();
+  saveStore(state.records);
+  refreshAll();
+});
+clearAllBtn.addEventListener('click', ()=>{
+  if(!window.confirm('保存されている記録をすべて削除します。よろしいですか？')) return;
+  state.records = [];
+  exitEditMode();
+  saveStore(state.records);
+  refreshAll();
+});
+
+/* =========================================================
+   9. FILTER WIRING
+   ========================================================= */
+[fDateStart,fDateEnd,fDistMin,fDistMax,fPaceMin,fPaceMax,fInOut].forEach(inp=>inp.addEventListener('input', applyFilterAndRender));
+filterResetBtn.addEventListener('click', ()=>{
+  fDateStart.value=''; fDateEnd.value=''; fDistMin.value=''; fDistMax.value=''; fPaceMin.value=''; fPaceMax.value=''; fInOut.value='all';
+  applyFilterAndRender();
+});
+function applyFilterAndRender(){
+  state.filter = {
+    dateStart: fDateStart.value ? new Date(fDateStart.value) : null,
+    dateEnd: fDateEnd.value ? new Date(fDateEnd.value) : null,
+    distMin: fDistMin.value!=='' ? parseFloat(fDistMin.value) : null,
+    distMax: fDistMax.value!=='' ? parseFloat(fDistMax.value) : null,
+    paceMin: fPaceMin.value!=='' ? parseFloat(fPaceMin.value) : null,
+    paceMax: fPaceMax.value!=='' ? parseFloat(fPaceMax.value) : null,
+    inout: fInOut.value
+  };
+  renderAll();
+}
+
+/* =========================================================
+   10. GOAL
+   ========================================================= */
+function fmtDateInput(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+[goalLabelInp,goalTargetInp,goalStartInp,goalEndInp].forEach(inp=>inp.addEventListener('input', applyGoalAndRender));
+function applyGoalAndRender(){
+  state.goal.label = goalLabelInp.value || '目標';
+  const t = parseFloat(goalTargetInp.value);
+  if(!isNaN(t) && t>0) state.goal.target = t;
+  const gs=new Date(goalStartInp.value), ge=new Date(goalEndInp.value);
+  if(!isNaN(gs)) state.goal.start = gs;
+  if(!isNaN(ge)) state.goal.end = ge;
+  renderGoal();
+}
+function resetGoalDefaults(){
+  if(!state.records.length){ state.goal.target=null; state.goal.start=null; state.goal.end=null; return; }
+  const total = d3.sum(state.records, r=>r.distance);
+  const dates = state.records.map(r=>r.date);
+  state.goal.target = Math.ceil((total*1.3)/50)*50 || 100;
+  state.goal.start = d3.min(dates);
+  state.goal.end = d3.max(dates);
+  goalLabelInp.value = state.goal.label;
+  goalTargetInp.value = state.goal.target;
+  goalStartInp.value = fmtDateInput(state.goal.start);
+  goalEndInp.value = fmtDateInput(state.goal.end);
+}
+function renderGoal(){
+  const {start,end,target,label} = state.goal;
+  if(!start || !end || !target){ goalCur.textContent='0.0'; goalTgt.textContent='— km'; goalPct.textContent='0%'; laneFill.style.width='0%'; laneRunner.style.left='0%'; goalRangeLabel.textContent=''; return; }
+  const cur = d3.sum(state.records.filter(r=>r.date>=start && r.date<=end), r=>r.distance);
+  const pct = target>0 ? Math.min(100, (cur/target)*100) : 0;
+  goalCur.textContent = cur.toFixed(1);
+  goalTgt.textContent = target.toFixed(0)+' km';
+  goalPct.textContent = pct.toFixed(0)+'%';
+  laneFill.style.width = pct+'%';
+  laneRunner.style.left = pct+'%';
+  goalRangeLabel.textContent = `${fmtDateInput(start)} 〜 ${fmtDateInput(end)} ・ ${label}`;
+}
+
+/* =========================================================
+   11. AXIS RANGES (advanced panel)
+   ========================================================= */
+advToggle.addEventListener('click', ()=>advPanel.classList.toggle('hidden'));
+autoRangeBtn.addEventListener('click', ()=>{ resetAxisRanges(); renderChart(); });
+[paceMinInp,paceMaxInp,distMaxInp,cmapMinInp,cmapMaxInp].forEach(inp=>inp.addEventListener('change', ()=>{ applyAxisInputs(); renderChart(); }));
+
+function resetAxisRanges(){
+  const recs = getFilteredRecords();
+  if(!recs.length){ return; }
+  const paces = recs.map(r=>r.pace), dists = recs.map(r=>r.distance);
+  const weekly = computeWeeklyDistance(recs);
+  const weeklyMax = weekly.length ? d3.max(weekly, w=>w.dist) : 10;
+  const pMin = Math.max(2.5, Math.floor((d3.min(paces)-0.3)*2)/2);
+  const pMax = Math.ceil((d3.max(paces)+0.3)*2)/2;
+  state.paceRange=[pMin,pMax];
+  state.distMaxOverride = Math.ceil(weeklyMax*1.15/5)*5 || 10;
+  const cMin = Math.floor(d3.min(dists)), cMax = Math.ceil(d3.max(dists));
+  state.cmapRange=[cMin===cMax?cMin-1:cMin, cMax];
+  paceMinInp.value=pMin; paceMaxInp.value=pMax; distMaxInp.value=state.distMaxOverride;
+  cmapMinInp.value=state.cmapRange[0]; cmapMaxInp.value=state.cmapRange[1];
+}
+function applyAxisInputs(){
+  const pMin=parseFloat(paceMinInp.value), pMax=parseFloat(paceMaxInp.value);
+  if(!isNaN(pMin)&&!isNaN(pMax)&&pMax>pMin) state.paceRange=[pMin,pMax];
+  const dMax=parseFloat(distMaxInp.value);
+  if(!isNaN(dMax)&&dMax>0) state.distMaxOverride=dMax;
+  const cMin=parseFloat(cmapMinInp.value), cMax=parseFloat(cmapMaxInp.value);
+  if(!isNaN(cMin)&&!isNaN(cMax)&&cMax>cMin) state.cmapRange=[cMin,cMax];
+}
+
+/* =========================================================
+   12. STATS
+   ========================================================= */
+function renderStats(){
+  const recs = getFilteredRecords();
+  const total = d3.sum(recs, r=>r.distance);
+  const count = recs.length;
+  const avgPace = recs.length ? d3.mean(recs, r=>r.pace) : NaN;
+  const bestPace = recs.length ? d3.min(recs, r=>r.pace) : NaN;
+  const weekly = computeWeeklyDistance(recs);
+  const thisWeekDist = weekly.length ? weekly[weekly.length-1].dist : 0;
+  const hrRecs = recs.filter(r=>r.avgHr!=null);
+  const avgHr = hrRecs.length ? d3.mean(hrRecs, r=>r.avgHr) : NaN;
+  const cards = [
+    {label:'総距離（フィルタ後）', value:total.toFixed(1), unit:'km'},
+    {label:'走行回数', value:String(count), unit:'回'},
+    {label:'平均ペース', value:paceToStr(avgPace), unit:'/km'},
+    {label:'ベストペース', value:paceToStr(bestPace), unit:'/km'},
+    {label:'直近の週間距離', value:thisWeekDist.toFixed(1), unit:'km'},
+    {label:'平均心拍数', value: isNaN(avgHr)?'—':avgHr.toFixed(0), unit:'bpm'},
+  ];
+  statsRow.innerHTML='';
+  cards.forEach(c=>{
+    const div=document.createElement('div'); div.className='stat-card';
+    div.innerHTML=`<div class="stat-label">${c.label}</div><div class="stat-value">${c.value}<small>${c.unit}</small></div>`;
+    statsRow.appendChild(div);
+  });
+}
+
+/* =========================================================
+   13. CHART (matplotlib-style: white paper, viridis, black/red lines)
+   ========================================================= */
+const W=1040, H=560;
+const M={top:26, right:132, bottom:126, left:66};
+const plotW=W-M.left-M.right, plotH=H-M.top-M.bottom;
+
+function renderChart(){
+  const svg=d3.select('#chart');
+  svg.selectAll('*').remove();
+  const recs = getFilteredRecords();
+
+  // paper background
+  svg.append('rect').attr('x',0).attr('y',0).attr('width',W).attr('height',H).attr('fill','#F7F5EF');
+
+  if(!recs.length || !state.paceRange || !state.distMaxOverride || !state.cmapRange){
+    svg.append('text').attr('x',W/2).attr('y',H/2).attr('text-anchor','middle')
+      .attr('font-family',"'Inter',sans-serif").attr('font-weight',600)
+      .attr('fill','#7A7561').attr('font-size',16).text('表示できる記録がありません（フィルタ条件を確認してください）');
+    return;
+  }
+
+  const FONT_UI = "'Inter',-apple-system,sans-serif";
+  const FONT_MONO = "'IBM Plex Mono',ui-monospace,monospace";
+  const INK = '#1B1B1B';
+
+  const x0 = d3.min(recs, r=>r.date), x1raw = d3.max(recs, r=>r.date);
+  const pad = 3*24*3600*1000;
+  const x0d = new Date(x0.getTime()-pad), x1d = new Date(x1raw.getTime()+pad);
+  const x = d3.scaleTime().domain([x0d,x1d]).range([0,plotW]);
+
+  const [pLow,pHigh] = state.paceRange;
+  const y1 = d3.scaleLinear().domain([pHigh,pLow]).range([plotH,0]);
+  const y2 = d3.scaleLinear().domain([0, state.distMaxOverride]).range([plotH,0]);
+  const [cMin,cMax] = state.cmapRange;
+  const color = d3.scaleSequential(d3.interpolateViridis).domain([cMin,cMax]).clamp(true);
+
+  const g = svg.append('g').attr('transform',`translate(${M.left},${M.top})`);
+  svg.append('defs').append('clipPath').attr('id','plotClip').append('rect').attr('width',plotW).attr('height',plotH);
+
+  // month gridlines (dashed gray, matches original)
+  const monthStarts = d3.timeMonth.range(d3.timeMonth.floor(x0d), d3.timeDay.offset(x1d,1));
+  g.append('g').attr('clip-path','url(#plotClip)').selectAll('line.mg').data(monthStarts).join('line')
+    .attr('x1',d=>x(d)).attr('x2',d=>x(d)).attr('y1',0).attr('y2',plotH)
+    .attr('stroke','#9B9686').attr('stroke-dasharray','3,3').attr('stroke-width',1).attr('opacity',0.6);
+
+  // weekly distance bars (secondary axis) - purple, alpha .3 like original
+  const weekly = computeWeeklyDistance(recs);
+  const barsG = g.append('g').attr('clip-path','url(#plotClip)');
+  barsG.selectAll('rect.wk').data(weekly).join('rect').attr('class','wk')
+    .attr('x', d=>x(d.weekStart))
+    .attr('width', d=>Math.max(0, x(new Date(d.weekStart.getTime()+7*86400000)) - x(d.weekStart)))
+    .attr('y', d=>y2(Math.min(d.dist, state.distMaxOverride)))
+    .attr('height', d=>plotH - y2(Math.min(d.dist, state.distMaxOverride)))
+    .attr('fill', '#7B4FA0').attr('opacity', 0.32);
+
+  // weekly value label near the base of the bar (matches original va="bottom" near dist_ylim[0]+2)
+  g.selectAll('text.wk-label').data(weekly).join('text').attr('class','wk-label')
+    .attr('x', d=>x(d.weekStart) + (x(new Date(d.weekStart.getTime()+7*86400000)) - x(d.weekStart))/2)
+    .attr('y', y2(Math.min(2, state.distMaxOverride*0.06)))
+    .attr('text-anchor','middle').attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill','#3E2E52')
+    .text(d=>d.dist>=1 ? d.dist.toFixed(0) : '');
+
+  // 7-day moving average (black) - toggleable
+  if(state.chartToggles.showMA){
+    const rolling = computeRollingMean7d(recs);
+    const maLine = d3.line().x(d=>x(d.date)).y(d=>y1(d.avg)).curve(d3.curveMonotoneX);
+    g.append('path').attr('clip-path','url(#plotClip)').datum(rolling).attr('fill','none').attr('stroke','#111111').attr('stroke-width',2.4).attr('d',maLine);
+  }
+
+  // linear regression (red, matplotlib 'red') - toggleable
+  if(state.chartToggles.showReg){
+    const xBase = x0.getTime();
+    const regPts = recs.map(r=>({x:(r.date.getTime()-xBase)/86400000, y:r.pace}));
+    const reg = linearRegression(regPts);
+    const regData = [x0d,x1d].map(d=>({date:d, y: reg.slope*((d.getTime()-xBase)/86400000)+reg.intercept}));
+    const regLine = d3.line().x(d=>x(d.date)).y(d=>y1(d.y));
+    g.append('path').attr('clip-path','url(#plotClip)').datum(regData).attr('fill','none').attr('stroke','#D62728').attr('stroke-width',2.4).attr('d',regLine);
+  }
+
+  // scatter (viridis fill, red ring if Out)
+  const ptsG = g.append('g').attr('clip-path','url(#plotClip)');
+  ptsG.selectAll('circle.pt').data(recs).join('circle').attr('class','pt')
+    .attr('cx', d=>x(d.date)).attr('cy', d=>y1(d.pace)).attr('r',4.4)
+    .attr('fill', d=>color(d.distance)).attr('fill-opacity',0.92)
+    .attr('stroke', d=>d.isOut ? '#D62728' : 'none').attr('stroke-width', d=>d.isOut ? 1.6 : 0)
+    .on('mousemove', (event,d)=>showTooltip(event,d)).on('mouseleave', hideTooltip);
+
+  // axes (bold ink, boxed like matplotlib, UI-matched type)
+  const y1Axis = d3.axisLeft(y1).ticks(6).tickFormat(v=>paceToStr(v));
+  g.append('g').call(y1Axis).selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12.5).attr('font-weight',600);
+  const y2Axis = d3.axisRight(y2).ticks(5);
+  const y2G = g.append('g').attr('transform',`translate(${plotW},0)`).call(y2Axis);
+  y2G.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12.5).attr('font-weight',600);
+  const xAxis = d3.axisBottom(x).ticks(Math.min(10, Math.max(4, Math.round(plotW/95)))).tickFormat(d3.timeFormat('%m/%d'));
+  const xG = g.append('g').attr('transform',`translate(0,${plotH})`).call(xAxis);
+  xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600).attr('transform','rotate(-45)').style('text-anchor','end');
+  g.selectAll('.domain, .tick line').attr('stroke',INK).attr('stroke-width',1.2);
+
+  // boxed plot border (matplotlib default spines)
+  g.append('rect').attr('x',0).attr('y',0).attr('width',plotW).attr('height',plotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
+
+  // axis labels
+  g.append('text').attr('x',-plotH/2).attr('y',-42).attr('transform','rotate(-90)').attr('text-anchor','middle')
+    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('ペース [分/km]');
+  g.append('text').attr('x',plotW+52).attr('y',-plotH/2).attr('transform',`rotate(90, ${plotW+52}, ${-plotH/2})`).attr('text-anchor','middle')
+    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('週間距離 [km]');
+
+  // colorbar (viridis) to the far right
+  const cbX = plotW+90, cbW=13, cbY=6, cbH=plotH-12;
+  const gradId='viridisGrad';
+  const defs = svg.select('defs');
+  const grad = defs.append('linearGradient').attr('id',gradId).attr('x1','0').attr('x2','0').attr('y1','1').attr('y2','0');
+  d3.range(0,1.0001,0.1).forEach(t=>grad.append('stop').attr('offset',(t*100)+'%').attr('stop-color', d3.interpolateViridis(t)));
+  g.append('rect').attr('x',cbX).attr('y',cbY).attr('width',cbW).attr('height',cbH).attr('fill',`url(#${gradId})`).attr('stroke',INK).attr('stroke-width',1);
+  g.append('text').attr('x',cbX).attr('y',cbY-8).attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill',INK).text(cMax.toFixed(0));
+  g.append('text').attr('x',cbX).attr('y',cbY+cbH+15).attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill',INK).text(cMin.toFixed(0));
+  g.append('text').attr('x',cbX+cbW+16).attr('y',cbY+cbH/2).attr('transform',`rotate(90, ${cbX+cbW+16}, ${cbY+cbH/2})`)
+    .attr('font-family',FONT_UI).attr('font-size',12).attr('font-weight',700).attr('fill',INK).attr('text-anchor','middle').text('Distance [km]');
+
+  // month total strip (below rotated x tick labels), January also shows year
+  const monthly = computeMonthlyDistance(recs).filter(m=>{ const mEnd=d3.timeMonth.offset(m.monthStart,1); return mEnd>=x0d && m.monthStart<=x1d; });
+  monthly.forEach(m=>{
+    const mx = x(m.monthStart);
+    if(m.monthStart.getMonth()===0){
+      g.append('text').attr('x',mx).attr('y',plotH+58).attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',600).attr('fill','#4A4536').text(m.monthStart.getFullYear());
+    }
+    g.append('text').attr('x',mx).attr('y',plotH+72).attr('font-family',FONT_UI).attr('font-size',12.5).attr('fill',INK).attr('font-weight',700).text((m.monthStart.getMonth()+1)+'月');
+    g.append('text').attr('x',mx).attr('y',plotH+86).attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',600).attr('fill','#4A4536').text(m.dist.toFixed(1)+' km');
+  });
+
+  // in-plot legend box, upper-left (matplotlib style, matched to toggles)
+  const legendItems=[];
+  if(state.chartToggles.showMA) legendItems.push({type:'line', color:'#111111', label:'7-day MA'});
+  if(state.chartToggles.showReg) legendItems.push({type:'line', color:'#D62728', label:'Linear Fit'});
+  legendItems.push({type:'swatch', color:'#7B4FA0', label:'Weekly Distance'});
+  const lg = g.append('g').attr('transform','translate(10,10)');
+  lg.append('rect').attr('width',140).attr('height',legendItems.length*19+8).attr('fill','#FFFFFF').attr('fill-opacity',0.9).attr('stroke',INK).attr('stroke-width',1);
+  legendItems.forEach((it,i)=>{
+    const yy=8+i*19+8;
+    if(it.type==='line'){ lg.append('line').attr('x1',9).attr('x2',29).attr('y1',yy).attr('y2',yy).attr('stroke',it.color).attr('stroke-width',2.6); }
+    else{ lg.append('rect').attr('x',9).attr('y',yy-5).attr('width',20).attr('height',8).attr('fill',it.color).attr('opacity',0.5); }
+    lg.append('text').attr('x',36).attr('y',yy+4).attr('font-family',FONT_UI).attr('font-size',11.5).attr('font-weight',600).attr('fill',INK).text(it.label);
+  });
+}
+
+function showTooltip(event,d){
+  const dateStr = d.date.getFullYear()+'/'+String(d.date.getMonth()+1).padStart(2,'0')+'/'+String(d.date.getDate()).padStart(2,'0');
+  tooltip.innerHTML = `<div class="tt-date">${dateStr}${d.isOut ? ' <span class="tt-out">・OUT</span>' : ''}</div>ペース ${paceToStr(d.pace)}/km<br>距離 ${d.distance.toFixed(1)} km`;
+  const containerRect = document.querySelector('.chart-wrap').getBoundingClientRect();
+  tooltip.style.left = (event.clientX - containerRect.left + 14) + 'px';
+  tooltip.style.top = (event.clientY - containerRect.top - 10) + 'px';
+  tooltip.style.opacity = 1;
+}
+function hideTooltip(){ tooltip.style.opacity = 0; }
+document.querySelector('.chart-wrap').style.position='relative';
+tooltip.style.position='absolute';
+
+/* =========================================================
+   14. PNG EXPORT
+   ========================================================= */
+pngBtn.addEventListener('click', ()=>{
+  const svgEl = document.getElementById('chart');
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const svgStr = new XMLSerializer().serializeToString(clone);
+  const svgBlob = new Blob([svgStr], {type:'image/svg+xml;charset=utf-8'});
+  const url = URL.createObjectURL(svgBlob);
+  const img = new Image();
+  img.onload = ()=>{
+    const scale=2;
+    const canvas=document.createElement('canvas');
+    canvas.width=W*scale; canvas.height=H*scale;
+    const ctx=canvas.getContext('2d');
+    ctx.scale(scale,scale);
+    ctx.drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    canvas.toBlob((blob)=>{ triggerDownload(blob, 'runline_chart.png'); });
+  };
+  img.src=url;
+});
+
+/* =========================================================
+   15. TABLE
+   ========================================================= */
+document.querySelectorAll('#recordsTable thead th[data-key]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.getAttribute('data-key');
+    if(state.sort.key===key) state.sort.dir = state.sort.dir==='asc'?'desc':'asc';
+    else { state.sort.key=key; state.sort.dir='asc'; }
+    renderTable();
+  });
+});
+function renderTable(){
+  let recs = getFilteredRecords();
+  const {key,dir} = state.sort;
+  recs = recs.slice().sort((a,b)=>{
+    let va=a[key], vb=b[key];
+    if(key==='date'){ va=va.getTime(); vb=vb.getTime(); }
+    if(key==='isOut'){ va=va?1:0; vb=vb?1:0; }
+    if(key==='avgHr'){ va=(va==null?-1:va); vb=(vb==null?-1:vb); }
+    return dir==='asc' ? (va-va===0 && vb-vb===0 ? va-vb : String(va).localeCompare(String(vb))) : (va-va===0 && vb-vb===0 ? vb-va : String(vb).localeCompare(String(va)));
+  });
+  tableCount.textContent = `全${state.records.length}件中 ${recs.length}件を表示`;
+  recordsTbody.innerHTML='';
+  if(!recs.length){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td colspan="6" class="table-empty">条件に一致する記録がありません</td>`;
+    recordsTbody.appendChild(tr);
+    return;
+  }
+  recs.forEach(r=>{
+    const tr=document.createElement('tr');
+    const dateStr = r.date.getFullYear()+'/'+String(r.date.getMonth()+1).padStart(2,'0')+'/'+String(r.date.getDate()).padStart(2,'0');
+    tr.innerHTML = `
+      <td>${dateStr}</td>
+      <td>${r.isOut?'<span class="out-badge">屋外</span>':'屋内'}</td>
+      <td>${r.distance.toFixed(1)}</td>
+      <td>${paceToStr(r.pace)}</td>
+      <td>${r.avgHr!=null ? r.avgHr.toFixed(0) : '—'}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-act="edit" data-id="${r.id}">編集</button>
+        <button class="icon-btn danger" data-act="del" data-id="${r.id}">削除</button>
+      </div></td>`;
+    recordsTbody.appendChild(tr);
+  });
+  recordsTbody.querySelectorAll('button[data-act="edit"]').forEach(b=>b.addEventListener('click', ()=>enterEditMode(b.dataset.id)));
+  recordsTbody.querySelectorAll('button[data-act="del"]').forEach(b=>b.addEventListener('click', ()=>deleteRecordById(b.dataset.id)));
+}
+
+function triggerDownload(blob, filename){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
+}
+
+exportCsvBtn.addEventListener('click', ()=>{
+  const recs = getFilteredRecords();
+  if(!recs.length){ tableMsg.textContent='書き出せる記録がありません（フィルタ条件を確認してください）。'; tableMsg.classList.remove('hidden'); return; }
+  tableMsg.classList.add('hidden');
+  const lines = ["Date,In/Out,Distance[km],mm'ss/km,AvgHR[bpm]"];
+  recs.forEach(r=>{
+    const dateStr = r.date.getFullYear()+'-'+String(r.date.getMonth()+1).padStart(2,'0')+'-'+String(r.date.getDate()).padStart(2,'0');
+    lines.push(`${dateStr},${r.isOut?'Out':'In'},${r.distance},${paceToStr(r.pace).replace('"','')},${r.avgHr!=null?r.avgHr:''}`);
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  triggerDownload(blob, 'runline_records.csv');
+});
+
+/* =========================================================
+   16. RENDER ALL
+   ========================================================= */
+function refreshAll(){
+  storagePill.textContent = storageOk ? 'この端末に保存' : '保存できません（プライベートモード等）';
+  emptyHint.classList.toggle('hidden', state.records.length>0);
+  resetGoalDefaults();
+  resetAxisRanges();
+  renderAll();
+}
+function renderAll(){
+  renderStats();
+  renderGoal();
+  resetAxisRanges();
+  renderChart();
+  renderTable();
+  filterStatus.textContent = `全${state.records.length}件のうち ${getFilteredRecords().length}件が条件に一致`;
+}
+
+refreshAll();
+
+})();
+</script>
+</body>
+</html>
