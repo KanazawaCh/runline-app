@@ -338,6 +338,23 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
     </div>
   </section>
 
+  <!-- ============ EFFICIENCY (avgHR vs pace over time) ============ -->
+  <section class="card">
+    <div class="card-head"><div class="card-title">心拍効率 <span>EF = 速度(km/h) ÷ 平均心拍数 × 100・高いほど効率が良い</span></div></div>
+    <div class="chart-toolbar">
+      <label class="check-pill"><input type="checkbox" id="efToggleMA" checked> 7日移動平均</label>
+      <label class="check-pill"><input type="checkbox" id="efToggleReg" checked> 回帰直線</label>
+      <div class="field" style="width:180px;"><label for="efMinDist">対象: 距離 (km) 以上</label><input type="number" id="efMinDist" step="0.5" min="0" value="0"></div>
+      <div class="toolbar-spacer"></div>
+    </div>
+    <div class="chart-wrap"><svg id="efChart" viewBox="0 0 1040 420"></svg></div>
+    <div class="chart-legend">
+      <div class="item"><span class="dot" style="background:var(--lane-lime); border:none;"></span>EF（心拍数入力がある記録のみ）</div>
+      <div class="item"><span class="swatch" style="background:#111;"></span>7日移動平均</div>
+      <div class="item"><span class="swatch" style="background:#D62728;"></span>回帰直線（トレンド）</div>
+    </div>
+  </section>
+
   <!-- ============ TABLE ============ -->
   <section class="card">
     <div class="card-head">
@@ -448,13 +465,16 @@ function computeMonthlyDistance(records){
   return Array.from(map.entries()).map(([k,dist])=>{ const [y,m]=k.split('-').map(Number); return {monthStart:new Date(y,m,1), dist}; }).sort((a,b)=>a.monthStart-b.monthStart);
 }
 function computeRollingMean7d(records){
+  return computeRollingMean7dBy(records, r=>r.pace);
+}
+function computeRollingMean7dBy(records, valueFn){
   const sorted=[...records].sort((a,b)=>a.date-b.date);
   const MS_7D=7*24*3600*1000; const out=[]; let start=0;
   for(let i=0;i<sorted.length;i++){
     const t=sorted[i].date.getTime();
     while(sorted[start].date.getTime()<=t-MS_7D) start++;
     let sum=0,cnt=0;
-    for(let j=start;j<=i;j++){ if(!isNaN(sorted[j].pace)){ sum+=sorted[j].pace; cnt++; } }
+    for(let j=start;j<=i;j++){ const v=valueFn(sorted[j]); if(!isNaN(v)){ sum+=v; cnt++; } }
     out.push({date:sorted[i].date, avg:cnt?sum/cnt:NaN});
   }
   return out;
@@ -502,6 +522,8 @@ const state = {
   headers: [], rawRows: [], mapping:{date:null,dist:null,pace:null,inout:null,hr:null},
   paceRange: null, distMaxOverride: null, cmapRange: null,
   chartToggles: {showMA:true, showReg:true},
+  efChartToggles: {showMA:true, showReg:true},
+  efMinDistance: 0,
   filter: {dateStart:null, dateEnd:null, distMin:null, distMax:null, paceMin:null, paceMax:null, inout:'all'},
   sort: {key:'date', dir:'desc'},
   goal: {label:'今期の目標', target:null, start:null, end:null}
@@ -520,6 +542,12 @@ function recordMatchesFilter(r, filter){
 }
 function getFilteredRecords(){
   return state.records.filter(r=>recordMatchesFilter(r, state.filter)).sort((a,b)=>a.date-b.date);
+}
+function getEfficiencyRecords(){
+  const minDist = state.efMinDistance||0;
+  return getFilteredRecords()
+    .filter(r=>r.avgHr!=null && r.avgHr>0 && r.distance>=minDist)
+    .map(r=>({date:r.date, ef: ((60/r.pace)/r.avgHr)*100}));
 }
 function isDup(a,b){
   return a.date.getTime()===b.date.getTime() && Math.abs(a.distance-b.distance)<0.001 && Math.abs(a.pace-b.pace)<0.001 && !!a.isOut===!!b.isOut;
@@ -577,6 +605,11 @@ const advPanel=$('advPanel'), advToggle=$('advToggle'), autoRangeBtn=$('autoRang
 const toggleMA=$('toggleMA'), toggleReg=$('toggleReg');
 toggleMA.addEventListener('change', ()=>{ state.chartToggles.showMA = toggleMA.checked; renderChart(); });
 toggleReg.addEventListener('change', ()=>{ state.chartToggles.showReg = toggleReg.checked; renderChart(); });
+
+const efToggleMA=$('efToggleMA'), efToggleReg=$('efToggleReg'), efMinDistInp=$('efMinDist');
+efToggleMA.addEventListener('change', ()=>{ state.efChartToggles.showMA = efToggleMA.checked; renderEfficiencyChart(); });
+efToggleReg.addEventListener('change', ()=>{ state.efChartToggles.showReg = efToggleReg.checked; renderEfficiencyChart(); });
+efMinDistInp.addEventListener('input', ()=>{ const v=parseFloat(efMinDistInp.value); state.efMinDistance = isNaN(v)?0:Math.max(0,v); renderEfficiencyChart(); });
 const paceMinInp=$('paceMin'), paceMaxInp=$('paceMax'), distMaxInp=$('distMax'), cmapMinInp=$('cmapMin'), cmapMaxInp=$('cmapMax');
 const pngBtn=$('pngBtn');
 const tooltip=$('tooltip');
@@ -1059,6 +1092,91 @@ function renderChart(){
   });
 }
 
+/* =========================================================
+   13b. EFFICIENCY CHART (avgHR-adjusted speed over time)
+   ========================================================= */
+const EF_W=1040, EF_H=420;
+const EF_M={top:20, right:36, bottom:70, left:60};
+const efPlotW=EF_W-EF_M.left-EF_M.right, efPlotH=EF_H-EF_M.top-EF_M.bottom;
+
+function renderEfficiencyChart(){
+  const svg=d3.select('#efChart');
+  svg.selectAll('*').remove();
+  const recs = getEfficiencyRecords();
+
+  svg.append('rect').attr('x',0).attr('y',0).attr('width',EF_W).attr('height',EF_H).attr('fill','#F7F5EF');
+
+  if(!recs.length){
+    svg.append('text').attr('x',EF_W/2).attr('y',EF_H/2).attr('text-anchor','middle')
+      .attr('font-family',"'Inter',sans-serif").attr('font-weight',600)
+      .attr('fill','#7A7561').attr('font-size',15).text('心拍数入力がある記録がありません（フィルタ条件・距離しきい値を確認してください）');
+    return;
+  }
+
+  const FONT_UI = "'Inter',-apple-system,sans-serif";
+  const FONT_MONO = "'IBM Plex Mono',ui-monospace,monospace";
+  const INK = '#1B1B1B';
+
+  const x0 = d3.min(recs, r=>r.date), x1raw = d3.max(recs, r=>r.date);
+  const pad = 3*24*3600*1000;
+  const x0d = new Date(x0.getTime()-pad), x1d = new Date(x1raw.getTime()+pad);
+  const x = d3.scaleTime().domain([x0d,x1d]).range([0,efPlotW]);
+
+  const efMin = d3.min(recs, r=>r.ef), efMax = d3.max(recs, r=>r.ef);
+  const efPad = (efMax-efMin)*0.15 || efMax*0.1 || 1;
+  const y = d3.scaleLinear().domain([Math.max(0,efMin-efPad), efMax+efPad]).range([efPlotH,0]);
+
+  const g = svg.append('g').attr('transform',`translate(${EF_M.left},${EF_M.top})`);
+  svg.append('defs').append('clipPath').attr('id','efPlotClip').append('rect').attr('width',efPlotW).attr('height',efPlotH);
+
+  const monthStarts = d3.timeMonth.range(d3.timeMonth.floor(x0d), d3.timeDay.offset(x1d,1));
+  g.append('g').attr('clip-path','url(#efPlotClip)').selectAll('line.mg').data(monthStarts).join('line')
+    .attr('x1',d=>x(d)).attr('x2',d=>x(d)).attr('y1',0).attr('y2',efPlotH)
+    .attr('stroke','#9B9686').attr('stroke-dasharray','3,3').attr('stroke-width',1).attr('opacity',0.6);
+
+  if(state.efChartToggles.showMA){
+    const rolling = computeRollingMean7dBy(recs, r=>r.ef);
+    const maLine = d3.line().x(d=>x(d.date)).y(d=>y(d.avg)).curve(d3.curveMonotoneX);
+    g.append('path').attr('clip-path','url(#efPlotClip)').datum(rolling).attr('fill','none').attr('stroke','#111111').attr('stroke-width',2.4).attr('d',maLine);
+  }
+
+  if(state.efChartToggles.showReg){
+    const xBase = x0.getTime();
+    const regPts = recs.map(r=>({x:(r.date.getTime()-xBase)/86400000, y:r.ef}));
+    const reg = linearRegression(regPts);
+    const regData = [x0d,x1d].map(d=>({date:d, y: reg.slope*((d.getTime()-xBase)/86400000)+reg.intercept}));
+    const regLine = d3.line().x(d=>x(d.date)).y(d=>y(d.y));
+    g.append('path').attr('clip-path','url(#efPlotClip)').datum(regData).attr('fill','none').attr('stroke','#D62728').attr('stroke-width',2.4).attr('d',regLine);
+  }
+
+  const ptsG = g.append('g').attr('clip-path','url(#efPlotClip)');
+  ptsG.selectAll('circle.efpt').data(recs).join('circle').attr('class','efpt')
+    .attr('cx', d=>x(d.date)).attr('cy', d=>y(d.ef)).attr('r',4.2)
+    .attr('fill', '#8FAE1E').attr('fill-opacity',0.85)
+    .on('mousemove', (event,d)=>showEfTooltip(event,d)).on('mouseleave', hideTooltip);
+
+  const yAxis = d3.axisLeft(y).ticks(6).tickFormat(v=>v.toFixed(2));
+  g.append('g').call(yAxis).selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12.5).attr('font-weight',600);
+  const xAxis = d3.axisBottom(x).ticks(Math.min(10, Math.max(4, Math.round(efPlotW/95)))).tickFormat(d3.timeFormat('%m/%d'));
+  const xG = g.append('g').attr('transform',`translate(0,${efPlotH})`).call(xAxis);
+  xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600).attr('transform','rotate(-45)').style('text-anchor','end');
+  g.selectAll('.domain, .tick line').attr('stroke',INK).attr('stroke-width',1.2);
+
+  g.append('rect').attr('x',0).attr('y',0).attr('width',efPlotW).attr('height',efPlotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
+
+  g.append('text').attr('x',-efPlotH/2).attr('y',-42).attr('transform','rotate(-90)').attr('text-anchor','middle')
+    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('EF（km/h ÷ bpm × 100）');
+}
+
+function showEfTooltip(event,d){
+  const dateStr = d.date.getFullYear()+'/'+String(d.date.getMonth()+1).padStart(2,'0')+'/'+String(d.date.getDate()).padStart(2,'0');
+  tooltip.innerHTML = `<div class="tt-date">${dateStr}</div>EF ${d.ef.toFixed(2)}`;
+  const containerRect = document.querySelector('#efChart').closest('.chart-wrap').getBoundingClientRect();
+  tooltip.style.left = (event.clientX - containerRect.left + 14) + 'px';
+  tooltip.style.top = (event.clientY - containerRect.top - 10) + 'px';
+  tooltip.style.opacity = 1;
+}
+
 function showTooltip(event,d){
   const dateStr = d.date.getFullYear()+'/'+String(d.date.getMonth()+1).padStart(2,'0')+'/'+String(d.date.getDate()).padStart(2,'0');
   tooltip.innerHTML = `<div class="tt-date">${dateStr}${d.isOut ? ' <span class="tt-out">・OUT</span>' : ''}</div>ペース ${paceToStr(d.pace)}/km<br>距離 ${d.distance.toFixed(1)} km`;
@@ -1226,6 +1344,7 @@ function renderAll(){
   renderGoal();
   resetAxisRanges();
   renderChart();
+  renderEfficiencyChart();
   renderTable();
   filterStatus.textContent = `全${state.records.length}件のうち ${getFilteredRecords().length}件が条件に一致`;
 }
