@@ -144,8 +144,8 @@ body{background:var(--ink); color:var(--chalk); font-family:var(--font-body); mi
 @media (max-width:900px){ .adv-panel{grid-template-columns:repeat(3,1fr);} }
 @media (max-width:560px){ .adv-panel{grid-template-columns:repeat(2,1fr);} }
 
-.chart-wrap{width:100%; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:10px 10px 4px; position:relative;}
-svg#chart{width:100%; height:auto; display:block; font-family:var(--font-mono);}
+.chart-wrap{width:100%; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:10px 10px 4px; position:relative; overflow:hidden;}
+svg#chart, svg#efChart{display:block; font-family:var(--font-mono); max-width:100%;}
 
 .chart-legend{display:flex; flex-wrap:wrap; gap:18px; margin-top:14px; font-size:12px; color:var(--muted);}
 .chart-legend .item{display:flex; align-items:center; gap:7px;}
@@ -328,7 +328,7 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
       <div class="field"><label for="cmapMax">配色 最長(km)</label><input type="number" id="cmapMax" step="0.5"></div>
       <div class="field" style="grid-column:1/-1;"><button class="btn btn-ghost btn-sm" id="autoRangeBtn" type="button">自動調整</button></div>
     </div>
-    <div class="chart-wrap"><svg id="chart" viewBox="0 0 1040 560"></svg></div>
+    <div class="chart-wrap"><svg id="chart"></svg></div>
     <div class="chart-legend">
       <div class="item"><span class="legend-gradient"></span>距離（viridis配色）</div>
       <div class="item"><span class="dot" style="border:2px solid var(--track-red); background:transparent;"></span>屋外 (Out)</div>
@@ -347,7 +347,7 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
       <div class="field" style="width:180px;"><label for="efMinDist">対象: 距離 (km) 以上</label><input type="number" id="efMinDist" step="0.5" min="0" value="0"></div>
       <div class="toolbar-spacer"></div>
     </div>
-    <div class="chart-wrap"><svg id="efChart" viewBox="0 0 1040 420"></svg></div>
+    <div class="chart-wrap"><svg id="efChart"></svg></div>
     <div class="chart-legend">
       <div class="item"><span class="dot" style="background:var(--lane-lime); border:none;"></span>EF（心拍数入力がある記録のみ）</div>
       <div class="item"><span class="swatch" style="background:#111;"></span>7日移動平均</div>
@@ -458,11 +458,6 @@ function computeWeeklyDistance(records){
   const map=new Map();
   for(const r of records){ const ws=getWeekStartSaturday(r.date); const key=ws.getTime(); map.set(key,(map.get(key)||0)+r.distance); }
   return Array.from(map.entries()).map(([t,dist])=>({weekStart:new Date(t),dist})).sort((a,b)=>a.weekStart-b.weekStart);
-}
-function computeMonthlyDistance(records){
-  const map=new Map();
-  for(const r of records){ const key=r.date.getFullYear()+'-'+r.date.getMonth(); map.set(key,(map.get(key)||0)+r.distance); }
-  return Array.from(map.entries()).map(([k,dist])=>{ const [y,m]=k.split('-').map(Number); return {monthStart:new Date(y,m,1), dist}; }).sort((a,b)=>a.monthStart-b.monthStart);
 }
 function computeRollingMean7d(records){
   return computeRollingMean7dBy(records, r=>r.pace);
@@ -949,14 +944,22 @@ function renderStats(){
 /* =========================================================
    13. CHART (matplotlib-style: white paper, viridis, black/red lines)
    ========================================================= */
-const W=1040, H=560;
-const M={top:26, right:132, bottom:126, left:66};
-const plotW=W-M.left-M.right, plotH=H-M.top-M.bottom;
+function chartContainerWidth(svgId){
+  const wrap = document.getElementById(svgId).closest('.chart-wrap');
+  const w = wrap.clientWidth - 2; // border
+  return Math.max(260, Math.floor(w));
+}
 
 function renderChart(){
   const svg=d3.select('#chart');
   svg.selectAll('*').remove();
   const recs = getFilteredRecords();
+
+  const W = chartContainerWidth('chart');
+  const H = Math.round(Math.min(460, Math.max(320, W*0.46)));
+  const M = {top:20, right:92, bottom:56, left:58};
+  const plotW=W-M.left-M.right, plotH=H-M.top-M.bottom;
+  svg.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
 
   // paper background
   svg.append('rect').attr('x',0).attr('y',0).attr('width',W).attr('height',H).attr('fill','#F7F5EF');
@@ -964,7 +967,7 @@ function renderChart(){
   if(!recs.length || !state.paceRange || !state.distMaxOverride || !state.cmapRange){
     svg.append('text').attr('x',W/2).attr('y',H/2).attr('text-anchor','middle')
       .attr('font-family',"'Inter',sans-serif").attr('font-weight',600)
-      .attr('fill','#7A7561').attr('font-size',16).text('表示できる記録がありません（フィルタ条件を確認してください）');
+      .attr('fill','#7A7561').attr('font-size',15).text('表示できる記録がありません（フィルタ条件を確認してください）');
     return;
   }
 
@@ -1034,12 +1037,12 @@ function renderChart(){
     .attr('stroke', d=>d.isOut ? '#D62728' : 'none').attr('stroke-width', d=>d.isOut ? 1.6 : 0)
     .on('mousemove', (event,d)=>showTooltip(event,d)).on('mouseleave', hideTooltip);
 
-  // axes (bold ink, boxed like matplotlib, UI-matched type)
+  // axes (bold ink, UI-matched type)
   const y1Axis = d3.axisLeft(y1).ticks(6).tickFormat(v=>paceToStr(v));
-  g.append('g').call(y1Axis).selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12.5).attr('font-weight',600);
+  g.append('g').call(y1Axis).selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',13).attr('font-weight',600);
   const y2Axis = d3.axisRight(y2).ticks(5);
   const y2G = g.append('g').attr('transform',`translate(${plotW},0)`).call(y2Axis);
-  y2G.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12.5).attr('font-weight',600);
+  y2G.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',13).attr('font-weight',600);
   const xAxis = d3.axisBottom(x).ticks(Math.min(10, Math.max(4, Math.round(plotW/95)))).tickFormat(d3.timeFormat('%m/%d'));
   const xG = g.append('g').attr('transform',`translate(0,${plotH})`).call(xAxis);
   xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600).attr('transform','rotate(-45)').style('text-anchor','end');
@@ -1051,58 +1054,33 @@ function renderChart(){
   // axis labels
   g.append('text').attr('x',-plotH/2).attr('y',-42).attr('transform','rotate(-90)').attr('text-anchor','middle')
     .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('ペース [分/km]');
-  g.append('text').attr('x',plotW+52).attr('y',-plotH/2).attr('transform',`rotate(90, ${plotW+52}, ${-plotH/2})`).attr('text-anchor','middle')
-    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('週間距離 [km]');
+  g.append('text').attr('x',plotW+38).attr('y',-plotH/2).attr('transform',`rotate(90, ${plotW+38}, ${-plotH/2})`).attr('text-anchor','middle')
+    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',13).attr('font-weight',700).text('週間距離 [km]');
 
-  // colorbar (viridis) to the far right
-  const cbX = plotW+90, cbW=13, cbY=6, cbH=plotH-12;
+  // colorbar (viridis) — value labels sit above/below it; the swatch meaning is in the HTML legend below the chart
+  const cbX = plotW+58, cbW=12, cbY=6, cbH=plotH-12;
   const gradId='viridisGrad';
   const defs = svg.select('defs');
   const grad = defs.append('linearGradient').attr('id',gradId).attr('x1','0').attr('x2','0').attr('y1','1').attr('y2','0');
   d3.range(0,1.0001,0.1).forEach(t=>grad.append('stop').attr('offset',(t*100)+'%').attr('stop-color', d3.interpolateViridis(t)));
   g.append('rect').attr('x',cbX).attr('y',cbY).attr('width',cbW).attr('height',cbH).attr('fill',`url(#${gradId})`).attr('stroke',INK).attr('stroke-width',1);
-  g.append('text').attr('x',cbX).attr('y',cbY-8).attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill',INK).text(cMax.toFixed(0));
-  g.append('text').attr('x',cbX).attr('y',cbY+cbH+15).attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill',INK).text(cMin.toFixed(0));
-  g.append('text').attr('x',cbX+cbW+16).attr('y',cbY+cbH/2).attr('transform',`rotate(90, ${cbX+cbW+16}, ${cbY+cbH/2})`)
-    .attr('font-family',FONT_UI).attr('font-size',12).attr('font-weight',700).attr('fill',INK).attr('text-anchor','middle').text('Distance [km]');
-
-  // month total strip (below rotated x tick labels), January also shows year
-  const monthly = computeMonthlyDistance(recs).filter(m=>{ const mEnd=d3.timeMonth.offset(m.monthStart,1); return mEnd>=x0d && m.monthStart<=x1d; });
-  monthly.forEach(m=>{
-    const mx = x(m.monthStart);
-    if(m.monthStart.getMonth()===0){
-      g.append('text').attr('x',mx).attr('y',plotH+58).attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',600).attr('fill','#4A4536').text(m.monthStart.getFullYear());
-    }
-    g.append('text').attr('x',mx).attr('y',plotH+72).attr('font-family',FONT_UI).attr('font-size',12.5).attr('fill',INK).attr('font-weight',700).text((m.monthStart.getMonth()+1)+'月');
-    g.append('text').attr('x',mx).attr('y',plotH+86).attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',600).attr('fill','#4A4536').text(m.dist.toFixed(1)+' km');
-  });
-
-  // in-plot legend box, upper-left (matplotlib style, matched to toggles)
-  const legendItems=[];
-  if(state.chartToggles.showMA) legendItems.push({type:'line', color:'#111111', label:'7-day MA'});
-  if(state.chartToggles.showReg) legendItems.push({type:'line', color:'#D62728', label:'Linear Fit'});
-  legendItems.push({type:'swatch', color:'#7B4FA0', label:'Weekly Distance'});
-  const lg = g.append('g').attr('transform','translate(10,10)');
-  lg.append('rect').attr('width',140).attr('height',legendItems.length*19+8).attr('fill','#FFFFFF').attr('fill-opacity',0.9).attr('stroke',INK).attr('stroke-width',1);
-  legendItems.forEach((it,i)=>{
-    const yy=8+i*19+8;
-    if(it.type==='line'){ lg.append('line').attr('x1',9).attr('x2',29).attr('y1',yy).attr('y2',yy).attr('stroke',it.color).attr('stroke-width',2.6); }
-    else{ lg.append('rect').attr('x',9).attr('y',yy-5).attr('width',20).attr('height',8).attr('fill',it.color).attr('opacity',0.5); }
-    lg.append('text').attr('x',36).attr('y',yy+4).attr('font-family',FONT_UI).attr('font-size',11.5).attr('font-weight',600).attr('fill',INK).text(it.label);
-  });
+  g.append('text').attr('x',cbX+cbW/2).attr('y',cbY-8).attr('text-anchor','middle').attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill',INK).text(cMax.toFixed(0));
+  g.append('text').attr('x',cbX+cbW/2).attr('y',cbY+cbH+15).attr('text-anchor','middle').attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill',INK).text(cMin.toFixed(0));
 }
 
 /* =========================================================
    13b. EFFICIENCY CHART (avgHR-adjusted speed over time)
    ========================================================= */
-const EF_W=1040, EF_H=420;
-const EF_M={top:20, right:36, bottom:70, left:60};
-const efPlotW=EF_W-EF_M.left-EF_M.right, efPlotH=EF_H-EF_M.top-EF_M.bottom;
-
 function renderEfficiencyChart(){
   const svg=d3.select('#efChart');
   svg.selectAll('*').remove();
   const recs = getEfficiencyRecords();
+
+  const EF_W = chartContainerWidth('efChart');
+  const EF_H = Math.round(Math.min(380, Math.max(260, EF_W*0.36)));
+  const EF_M = {top:16, right:24, bottom:56, left:54};
+  const efPlotW=EF_W-EF_M.left-EF_M.right, efPlotH=EF_H-EF_M.top-EF_M.bottom;
+  svg.attr('width', EF_W).attr('height', EF_H).attr('viewBox', `0 0 ${EF_W} ${EF_H}`);
 
   svg.append('rect').attr('x',0).attr('y',0).attr('width',EF_W).attr('height',EF_H).attr('fill','#F7F5EF');
 
@@ -1156,7 +1134,7 @@ function renderEfficiencyChart(){
     .on('mousemove', (event,d)=>showEfTooltip(event,d)).on('mouseleave', hideTooltip);
 
   const yAxis = d3.axisLeft(y).ticks(6).tickFormat(v=>v.toFixed(2));
-  g.append('g').call(yAxis).selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12.5).attr('font-weight',600);
+  g.append('g').call(yAxis).selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',13).attr('font-weight',600);
   const xAxis = d3.axisBottom(x).ticks(Math.min(10, Math.max(4, Math.round(efPlotW/95)))).tickFormat(d3.timeFormat('%m/%d'));
   const xG = g.append('g').attr('transform',`translate(0,${efPlotH})`).call(xAxis);
   xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600).attr('transform','rotate(-45)').style('text-anchor','end');
@@ -1194,6 +1172,7 @@ tooltip.style.position='absolute';
    ========================================================= */
 pngBtn.addEventListener('click', ()=>{
   const svgEl = document.getElementById('chart');
+  const pngW = Number(svgEl.getAttribute('width')), pngH = Number(svgEl.getAttribute('height'));
   const clone = svgEl.cloneNode(true);
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
   const svgStr = new XMLSerializer().serializeToString(clone);
@@ -1203,7 +1182,7 @@ pngBtn.addEventListener('click', ()=>{
   img.onload = ()=>{
     const scale=2;
     const canvas=document.createElement('canvas');
-    canvas.width=W*scale; canvas.height=H*scale;
+    canvas.width=pngW*scale; canvas.height=pngH*scale;
     const ctx=canvas.getContext('2d');
     ctx.scale(scale,scale);
     ctx.drawImage(img,0,0);
@@ -1348,6 +1327,12 @@ function renderAll(){
   renderTable();
   filterStatus.textContent = `全${state.records.length}件のうち ${getFilteredRecords().length}件が条件に一致`;
 }
+
+let chartResizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(chartResizeTimer);
+  chartResizeTimer = setTimeout(()=>{ renderChart(); renderEfficiencyChart(); }, 150);
+});
 
 refreshAll();
 
