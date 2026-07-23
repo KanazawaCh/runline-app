@@ -235,6 +235,7 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
     </div>
 
     <div id="tabCsv" class="hidden">
+      <label class="check-pill" style="margin-bottom:10px;"><input type="checkbox" id="csvReplaceAll"> このCSVで全データを置き換える（既存の記録は削除されます）</label>
       <div class="dropzone" id="dropzone">
         <h3>CSVをドロップ、または選択</h3>
 
@@ -560,7 +561,7 @@ const storagePill=$('storagePill'), clearAllBtn=$('clearAllBtn');
 const tabBtnManual=$('tabBtnManual'), tabBtnCsv=$('tabBtnCsv'), tabManual=$('tabManual'), tabCsv=$('tabCsv');
 const manualForm=$('manualForm'), mDate=$('mDate'), mDist=$('mDist'), mDurH=$('mDurH'), mDurM=$('mDurM'), mDurS=$('mDurS'), mHr=$('mHr'), mInOut=$('mInOut'), pacePreview=$('pacePreview');
 const manualSubmitBtn=$('manualSubmitBtn'), manualCancelBtn=$('manualCancelBtn'), manualErr=$('manualErr');
-const dropzone=$('dropzone'), fileInput=$('fileInput'), browseBtn=$('browseBtn');
+const dropzone=$('dropzone'), fileInput=$('fileInput'), browseBtn=$('browseBtn'), csvReplaceAll=$('csvReplaceAll');
 const mappingCard=$('mappingCard'), mapDate=$('mapDate'), mapDist=$('mapDist'), mapPace=$('mapPace'), mapInOut=$('mapInOut'), mapHr=$('mapHr'), applyMapBtn=$('applyMapBtn');
 const csvErr=$('csvErr'), csvToast=$('csvToast');
 const emptyHint=$('emptyHint'), sampleBtn=$('sampleBtn');
@@ -757,6 +758,18 @@ function buildRecordsFromMapping(){
   return recs;
 }
 function importRecords(recs){
+  if(csvReplaceAll.checked){
+    if(!window.confirm(`既存の${state.records.length}件を削除し、このCSVの${recs.length}件で置き換えます。よろしいですか？`)){
+      fileInput.value='';
+      return;
+    }
+    state.records = recs.map(r=>Object.assign({id:makeId()}, r));
+    exitEditMode();
+    saveStore(state.records);
+    showCsvToast(`${state.records.length}件で置き換えました。`);
+    refreshAll();
+    return;
+  }
   const {merged, added, skipped} = mergeImportDedupe(state.records, recs);
   state.records = merged;
   saveStore(state.records);
