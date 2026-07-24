@@ -484,6 +484,13 @@ function linearRegression(points){
   const intercept=(sy-slope*sx)/n;
   return {slope, intercept};
 }
+// Shrinks & fades scatter points as they get denser (points per pixel of plot width),
+// so a long history on a narrow screen reads as a trend haze instead of a solid blob.
+function scatterDensityStyle(count, plotWidthPx){
+  const density = plotWidthPx>0 ? count/plotWidthPx : 0;
+  const t = Math.max(0, Math.min(1, (density-0.25)/1.75));
+  return { r: 4.4-t*2.8, opacity: 0.92-t*0.4 };
+}
 
 /* =========================================================
    2. RECORD STORE (id, date, distance, pace, isOut) + localStorage
@@ -957,7 +964,7 @@ function renderChart(){
 
   const W = chartContainerWidth('chart');
   const H = Math.round(Math.min(460, Math.max(320, W*0.46)));
-  const M = {top:20, right:92, bottom:56, left:58};
+  const M = {top:20, right:92, bottom:56, left:88};
   const plotW=W-M.left-M.right, plotH=H-M.top-M.bottom;
   svg.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
 
@@ -1031,10 +1038,11 @@ function renderChart(){
 
   // scatter (viridis fill, red ring if Out)
   const ptsG = g.append('g').attr('clip-path','url(#plotClip)');
+  const ptStyle = scatterDensityStyle(recs.length, plotW);
   ptsG.selectAll('circle.pt').data(recs).join('circle').attr('class','pt')
-    .attr('cx', d=>x(d.date)).attr('cy', d=>y1(d.pace)).attr('r',4.4)
-    .attr('fill', d=>color(d.distance)).attr('fill-opacity',0.92)
-    .attr('stroke', d=>d.isOut ? '#D62728' : 'none').attr('stroke-width', d=>d.isOut ? 1.6 : 0)
+    .attr('cx', d=>x(d.date)).attr('cy', d=>y1(d.pace)).attr('r',ptStyle.r)
+    .attr('fill', d=>color(d.distance)).attr('fill-opacity',ptStyle.opacity)
+    .attr('stroke', d=>d.isOut ? '#D62728' : 'none').attr('stroke-width', d=>d.isOut ? Math.min(1.6,ptStyle.r*0.4) : 0)
     .on('mousemove', (event,d)=>showTooltip(event,d)).on('mouseleave', hideTooltip);
 
   // axes (bold ink, UI-matched type)
@@ -1052,7 +1060,7 @@ function renderChart(){
   g.append('rect').attr('x',0).attr('y',0).attr('width',plotW).attr('height',plotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
 
   // axis labels
-  g.append('text').attr('x',-plotH/2).attr('y',-42).attr('transform','rotate(-90)').attr('text-anchor','middle')
+  g.append('text').attr('x',-plotH/2).attr('y',-68).attr('transform','rotate(-90)').attr('text-anchor','middle')
     .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('ペース [分/km]');
   g.append('text').attr('x',plotW+38).attr('y',-plotH/2).attr('transform',`rotate(90, ${plotW+38}, ${-plotH/2})`).attr('text-anchor','middle')
     .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',13).attr('font-weight',700).text('週間距離 [km]');
@@ -1078,7 +1086,7 @@ function renderEfficiencyChart(){
 
   const EF_W = chartContainerWidth('efChart');
   const EF_H = Math.round(Math.min(380, Math.max(260, EF_W*0.36)));
-  const EF_M = {top:16, right:24, bottom:56, left:54};
+  const EF_M = {top:16, right:24, bottom:56, left:84};
   const efPlotW=EF_W-EF_M.left-EF_M.right, efPlotH=EF_H-EF_M.top-EF_M.bottom;
   svg.attr('width', EF_W).attr('height', EF_H).attr('viewBox', `0 0 ${EF_W} ${EF_H}`);
 
@@ -1128,9 +1136,10 @@ function renderEfficiencyChart(){
   }
 
   const ptsG = g.append('g').attr('clip-path','url(#efPlotClip)');
+  const efPtStyle = scatterDensityStyle(recs.length, efPlotW);
   ptsG.selectAll('circle.efpt').data(recs).join('circle').attr('class','efpt')
-    .attr('cx', d=>x(d.date)).attr('cy', d=>y(d.ef)).attr('r',4.2)
-    .attr('fill', '#8FAE1E').attr('fill-opacity',0.85)
+    .attr('cx', d=>x(d.date)).attr('cy', d=>y(d.ef)).attr('r',efPtStyle.r)
+    .attr('fill', '#8FAE1E').attr('fill-opacity',efPtStyle.opacity)
     .on('mousemove', (event,d)=>showEfTooltip(event,d)).on('mouseleave', hideTooltip);
 
   const yAxis = d3.axisLeft(y).ticks(6).tickFormat(v=>v.toFixed(2));
@@ -1142,7 +1151,7 @@ function renderEfficiencyChart(){
 
   g.append('rect').attr('x',0).attr('y',0).attr('width',efPlotW).attr('height',efPlotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
 
-  g.append('text').attr('x',-efPlotH/2).attr('y',-42).attr('transform','rotate(-90)').attr('text-anchor','middle')
+  g.append('text').attr('x',-efPlotH/2).attr('y',-64).attr('transform','rotate(-90)').attr('text-anchor','middle')
     .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('EF（km/h ÷ bpm × 100）');
 }
 
