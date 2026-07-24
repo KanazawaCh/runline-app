@@ -1012,12 +1012,17 @@ function renderChart(){
     .attr('height', d=>plotH - y2(Math.min(d.dist, state.distMaxOverride)))
     .attr('fill', '#7B4FA0').attr('opacity', 0.32);
 
-  // weekly value label near the base of the bar (matches original va="bottom" near dist_ylim[0]+2)
-  g.selectAll('text.wk-label').data(weekly).join('text').attr('class','wk-label')
-    .attr('x', d=>x(d.weekStart) + (x(new Date(d.weekStart.getTime()+7*86400000)) - x(d.weekStart))/2)
-    .attr('y', y2(Math.min(2, state.distMaxOverride*0.06)))
-    .attr('text-anchor','middle').attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill','#3E2E52')
-    .text(d=>d.dist>=1 ? d.dist.toFixed(0) : '');
+  // weekly value label near the base of the bar — skipped when the bar is too
+  // narrow to hold a number without touching its neighbors (many weeks on a
+  // narrow screen), since the bars themselves still convey the trend.
+  const wkBarWidth = weekly.length ? (x(new Date(weekly[0].weekStart.getTime()+7*86400000)) - x(weekly[0].weekStart)) : 0;
+  if(wkBarWidth >= 17){
+    g.selectAll('text.wk-label').data(weekly).join('text').attr('class','wk-label')
+      .attr('x', d=>x(d.weekStart) + (x(new Date(d.weekStart.getTime()+7*86400000)) - x(d.weekStart))/2)
+      .attr('y', y2(Math.min(2, state.distMaxOverride*0.06)))
+      .attr('text-anchor','middle').attr('font-family',FONT_MONO).attr('font-size',11).attr('font-weight',700).attr('fill','#3E2E52')
+      .text(d=>d.dist>=1 ? d.dist.toFixed(0) : '');
+  }
 
   // 7-day moving average (black) - toggleable
   if(state.chartToggles.showMA){
