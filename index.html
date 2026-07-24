@@ -964,7 +964,7 @@ function renderChart(){
 
   const W = chartContainerWidth('chart');
   const H = Math.round(Math.min(460, Math.max(320, W*0.46)));
-  const M = {top:20, right:92, bottom:56, left:88};
+  const M = {top:18, right:68, bottom:44, left:74};
   const plotW=W-M.left-M.right, plotH=H-M.top-M.bottom;
   svg.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
 
@@ -1065,13 +1065,13 @@ function renderChart(){
   g.append('rect').attr('x',0).attr('y',0).attr('width',plotW).attr('height',plotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
 
   // axis labels
-  g.append('text').attr('x',-plotH/2).attr('y',-68).attr('transform','rotate(-90)').attr('text-anchor','middle')
+  g.append('text').attr('x',-plotH/2).attr('y',-58).attr('transform','rotate(-90)').attr('text-anchor','middle')
     .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('ペース [分/km]');
-  g.append('text').attr('x',plotW+38).attr('y',-plotH/2).attr('transform',`rotate(90, ${plotW+38}, ${-plotH/2})`).attr('text-anchor','middle')
+  g.append('text').attr('x',plotW+32).attr('y',-plotH/2).attr('transform',`rotate(90, ${plotW+32}, ${-plotH/2})`).attr('text-anchor','middle')
     .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',13).attr('font-weight',700).text('週間距離 [km]');
 
   // colorbar (viridis) — value labels sit above/below it; the swatch meaning is in the HTML legend below the chart
-  const cbX = plotW+58, cbW=12, cbY=6, cbH=plotH-12;
+  const cbX = plotW+46, cbW=12, cbY=10, cbH=plotH-20;
   const gradId='viridisGrad';
   const defs = svg.select('defs');
   const grad = defs.append('linearGradient').attr('id',gradId).attr('x1','0').attr('x2','0').attr('y1','1').attr('y2','0');
@@ -1091,7 +1091,7 @@ function renderEfficiencyChart(){
 
   const EF_W = chartContainerWidth('efChart');
   const EF_H = Math.round(Math.min(380, Math.max(260, EF_W*0.36)));
-  const EF_M = {top:16, right:24, bottom:56, left:84};
+  const EF_M = {top:14, right:16, bottom:44, left:74};
   const efPlotW=EF_W-EF_M.left-EF_M.right, efPlotH=EF_H-EF_M.top-EF_M.bottom;
   svg.attr('width', EF_W).attr('height', EF_H).attr('viewBox', `0 0 ${EF_W} ${EF_H}`);
 
@@ -1156,7 +1156,7 @@ function renderEfficiencyChart(){
 
   g.append('rect').attr('x',0).attr('y',0).attr('width',efPlotW).attr('height',efPlotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
 
-  g.append('text').attr('x',-efPlotH/2).attr('y',-64).attr('transform','rotate(-90)').attr('text-anchor','middle')
+  g.append('text').attr('x',-efPlotH/2).attr('y',-58).attr('transform','rotate(-90)').attr('text-anchor','middle')
     .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('EF（km/h ÷ bpm × 100）');
 }
 
