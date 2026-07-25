@@ -158,10 +158,11 @@ body{background:var(--ink); color:var(--chalk); font-family:var(--font-body); mi
 .chart-wrap{width:100%; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:10px 10px 4px; position:relative; overflow:hidden;}
 svg#chart, svg#efChart{display:block; font-family:var(--font-mono); max-width:100%;}
 
-.chart-legend{display:flex; flex-wrap:wrap; gap:9px 22px; margin-top:14px; padding:11px 16px; background:var(--card-2); border:1px solid var(--line); border-radius:10px; font-size:12.5px; color:var(--muted);}
-.chart-legend .item{display:flex; align-items:center; gap:7px; white-space:nowrap;}
-.chart-legend .swatch{width:16px; height:3px; border-radius:2px; display:inline-block;}
-.chart-legend .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+.chart-legend{display:flex; flex-wrap:wrap; gap:10px 24px; margin-top:14px; padding:12px 18px; background:var(--card-2); border:1px solid var(--line); border-radius:10px; font-size:13px; color:var(--chalk); font-weight:500;}
+.chart-legend .item{display:flex; align-items:center; gap:9px; white-space:nowrap; padding-right:24px; border-right:1px solid var(--line);}
+.chart-legend .item:last-child{padding-right:0; border-right:none;}
+.chart-legend .swatch{width:20px; height:4px; border-radius:2px; display:inline-block; flex:none;}
+.chart-legend .dot{width:11px; height:11px; border-radius:50%; display:inline-block; flex:none;}
 .legend-gradient{width:74px; height:9px; border-radius:5px; background:linear-gradient(90deg,#440154,#3b528b,#21918c,#5ec962,#fde725); display:inline-block;}
 
 /* ---------- table ---------- */
@@ -328,7 +329,7 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
 
   <!-- ============ CHART (matplotlib-style) ============ -->
   <section class="card">
-    <div class="card-head"><div class="card-title">PACE / DISTANCE <span id="chartRangeLabel"></span></div></div>
+    <div class="card-head"><div class="card-title">PACE / DISTANCE</div></div>
     <div class="chart-toolbar">
       <label class="check-pill"><input type="checkbox" id="toggleMA" checked> 7日移動平均</label>
       <label class="check-pill"><input type="checkbox" id="toggleReg" checked> 回帰直線</label>
@@ -561,20 +562,6 @@ function recordMatchesFilter(r, filter){
 function getFilteredRecords(){
   return state.records.filter(r=>recordMatchesFilter(r, state.filter)).sort((a,b)=>a.date-b.date);
 }
-// Robust replacement for "show the year only if January happens to be visible":
-// derives the label straight from the actual plotted date range, so it works
-// under any filter/axis range, and folds in the monthly/period total when the
-// visible range is about a month or less.
-function describeChartRange(recs, x0, x1raw){
-  const y0=x0.getFullYear(), y1=x1raw.getFullYear();
-  const m0=x0.getMonth(), m1=x1raw.getMonth();
-  const yearPart = y0===y1 ? `${y0}年` : `${y0}〜${y1}年`;
-  const spanDays = (x1raw-x0)/86400000;
-  const total = d3.sum(recs, r=>r.distance);
-  if(y0===y1 && m0===m1) return `${y0}年${m0+1}月 ・ 月間距離 ${total.toFixed(1)}km`;
-  if(spanDays<=31) return `${yearPart} ・ 期間距離 ${total.toFixed(1)}km`;
-  return yearPart;
-}
 function getEfficiencyRecords(){
   const minDist = state.efMinDistance||0;
   return getFilteredRecords()
@@ -645,7 +632,6 @@ efToggleReg.addEventListener('change', ()=>{ state.efChartToggles.showReg = efTo
 efMinDistInp.addEventListener('input', ()=>{ const v=parseFloat(efMinDistInp.value); state.efMinDistance = isNaN(v)?0:Math.max(0,v); renderEfficiencyChart(); });
 const paceMinInp=$('paceMin'), paceMaxInp=$('paceMax'), distMaxInp=$('distMax'), cmapMinInp=$('cmapMin'), cmapMaxInp=$('cmapMax');
 const pngBtn=$('pngBtn');
-const chartRangeLabel=$('chartRangeLabel');
 const tooltip=$('tooltip');
 
 const tableCount=$('tableCount'), recordsTbody=$('recordsTbody'), exportCsvBtn=$('exportCsvBtn'), tableMsg=$('tableMsg');
@@ -1037,7 +1023,7 @@ function renderChart(){
 
   const W = chartContainerWidth('chart');
   const H = Math.round(Math.min(460, Math.max(320, W*0.46)));
-  const M = {top:18, right:68, bottom:44, left:74};
+  const M = {top:18, right:68, bottom:64, left:74};
   const plotW=W-M.left-M.right, plotH=H-M.top-M.bottom;
   svg.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
 
@@ -1048,7 +1034,6 @@ function renderChart(){
     svg.append('text').attr('x',W/2).attr('y',H/2).attr('text-anchor','middle')
       .attr('font-family',"'Inter',sans-serif").attr('font-weight',600)
       .attr('fill','#7A7561').attr('font-size',15).text('表示できる記録がありません（フィルタ条件を確認してください）');
-    chartRangeLabel.textContent = '';
     return;
   }
 
@@ -1057,7 +1042,6 @@ function renderChart(){
   const INK = '#1B1B1B';
 
   const x0 = d3.min(recs, r=>r.date), x1raw = d3.max(recs, r=>r.date);
-  chartRangeLabel.textContent = describeChartRange(recs, x0, x1raw);
   const pad = 3*24*3600*1000;
   const x0d = new Date(x0.getTime()-pad), x1d = new Date(x1raw.getTime()+pad);
   const x = d3.scaleTime().domain([x0d,x1d]).range([0,plotW]);
@@ -1136,8 +1120,35 @@ function renderChart(){
   xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600).attr('transform','rotate(-45)').style('text-anchor','end');
   g.selectAll('.domain, .tick line').attr('stroke',INK).attr('stroke-width',1.2);
 
+  // per-month label (month + distance total), skipped when a month's column is
+  // too narrow to hold text without overlapping its neighbors. The year is
+  // prefixed on the first visible label and again whenever it changes, so it
+  // reads correctly regardless of whether January itself is in view.
+  let lastYearShown = null;
+  monthStarts.forEach((mStart,i)=>{
+    const mEnd = i+1<monthStarts.length ? monthStarts[i+1] : x1d;
+    const w = x(mEnd)-x(mStart);
+    if(w<18) return;
+    const yearChanged = lastYearShown===null || mStart.getFullYear()!==lastYearShown;
+    lastYearShown = mStart.getFullYear();
+    const total = d3.sum(recs.filter(r=>r.date>=mStart && r.date<mEnd), r=>r.distance);
+    const monthPart = (yearChanged? mStart.getFullYear()+'年' : '')+(mStart.getMonth()+1)+'月';
+    const label = (w>=46 && total>0) ? `${monthPart} ${total.toFixed(0)}km` : monthPart;
+    g.append('text').attr('x',(x(mStart)+x(mEnd))/2).attr('y',plotH+42)
+      .attr('text-anchor','middle').attr('font-family',FONT_MONO).attr('font-size',10.5).attr('font-weight',600).attr('fill','#4A4536')
+      .text(label);
+  });
+
   // boxed plot border (matplotlib default spines)
   g.append('rect').attr('x',0).attr('y',0).attr('width',plotW).attr('height',plotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
+
+  // year badge, always visible regardless of what date range is filtered in
+  const yearBadgeText = x0.getFullYear()===x1raw.getFullYear() ? `${x0.getFullYear()}年` : `${x0.getFullYear()}–${x1raw.getFullYear()}年`;
+  const badgeW = yearBadgeText.length*8+16;
+  g.append('rect').attr('x',8).attr('y',8).attr('width',badgeW).attr('height',22).attr('rx',5)
+    .attr('fill','#FFFFFF').attr('fill-opacity',0.88).attr('stroke',INK).attr('stroke-width',1);
+  g.append('text').attr('x',8+badgeW/2).attr('y',8+15).attr('text-anchor','middle')
+    .attr('font-family',FONT_UI).attr('font-size',12.5).attr('font-weight',700).attr('fill',INK).text(yearBadgeText);
 
   // axis labels
   g.append('text').attr('x',-plotH/2).attr('y',-58).attr('transform','rotate(-90)').attr('text-anchor','middle')
