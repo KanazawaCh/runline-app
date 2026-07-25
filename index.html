@@ -192,11 +192,14 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
 .modal-box{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px; width:100%; max-width:860px; max-height:84vh; display:flex; flex-direction:column; gap:14px; box-shadow:0 20px 60px rgba(0,0,0,.5);}
 .modal-head{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;}
 .modal-table-wrap{overflow:auto; max-height:66vh; margin-top:0;}
-.modal-table-wrap table{font-variant-numeric:tabular-nums;}
+.modal-table-wrap table{table-layout:fixed; width:100%; font-variant-numeric:tabular-nums;}
+.modal-table-wrap th{white-space:normal; line-height:1.25; text-align:right; vertical-align:bottom;}
+.modal-table-wrap td{text-align:right; white-space:nowrap;}
+.modal-table-wrap th:first-child, .modal-table-wrap td:first-child{text-align:left;}
 @media (max-width:640px){
-  .modal-table-wrap table{width:100%; font-size:9px; letter-spacing:-.3px;}
-  .modal-table-wrap th, .modal-table-wrap td{padding:4px 1px; text-align:right; white-space:nowrap;}
-  .modal-table-wrap th:first-child, .modal-table-wrap td:first-child{text-align:left; padding-left:3px;}
+  .modal-table-wrap table{font-size:9px; letter-spacing:-.3px;}
+  .modal-table-wrap th, .modal-table-wrap td{padding:4px 1px;}
+  .modal-table-wrap th:first-child, .modal-table-wrap td:first-child{padding-left:3px;}
 }
 </style>
 </head>
@@ -407,6 +410,10 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
     </div>
     <div class="table-wrap modal-table-wrap">
       <table id="paceRefTable">
+        <colgroup>
+          <col style="width:9%"><col style="width:11%"><col style="width:11%"><col style="width:11%">
+          <col style="width:11%"><col style="width:15.5%"><col style="width:15.5%"><col style="width:15.5%">
+        </colgroup>
         <thead>
           <tr>
             <th>mph</th>
