@@ -123,6 +123,17 @@ body{background:var(--ink); color:var(--chalk); font-family:var(--font-body); mi
 .stat-value{font-family:var(--font-mono); font-size:22px; font-weight:600; color:var(--chalk);}
 .stat-value small{font-size:12px; color:var(--muted); font-weight:500; margin-left:2px;}
 
+/* ---------- personal bests (champion data) ---------- */
+.pb-row{display:grid; grid-template-columns:repeat(5,1fr); gap:14px;}
+@media (max-width:900px){ .pb-row{grid-template-columns:repeat(2,1fr);} }
+.pb-card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; position:relative; overflow:hidden;}
+.pb-card::before{content:'🏆'; position:absolute; top:10px; right:12px; font-size:14px; opacity:.35;}
+.pb-label{font-size:11px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin-bottom:8px;}
+.pb-pace{font-family:var(--font-mono); font-size:20px; font-weight:600; color:var(--amber);}
+.pb-pace small{font-size:11px; color:var(--muted); font-weight:500; margin-left:2px;}
+.pb-meta{margin-top:6px; font-size:11.5px; color:var(--muted); font-family:var(--font-mono);}
+.pb-empty{color:var(--muted-2); font-size:12px;}
+
 /* ---------- goal lane ---------- */
 .goal-top{display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px 24px; margin-bottom:18px;}
 .goal-figures{display:flex; align-items:baseline; gap:10px;}
@@ -147,8 +158,8 @@ body{background:var(--ink); color:var(--chalk); font-family:var(--font-body); mi
 .chart-wrap{width:100%; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:10px 10px 4px; position:relative; overflow:hidden;}
 svg#chart, svg#efChart{display:block; font-family:var(--font-mono); max-width:100%;}
 
-.chart-legend{display:flex; flex-wrap:wrap; gap:18px; margin-top:14px; font-size:12px; color:var(--muted);}
-.chart-legend .item{display:flex; align-items:center; gap:7px;}
+.chart-legend{display:flex; flex-wrap:wrap; gap:9px 22px; margin-top:14px; padding:11px 16px; background:var(--card-2); border:1px solid var(--line); border-radius:10px; font-size:12.5px; color:var(--muted);}
+.chart-legend .item{display:flex; align-items:center; gap:7px; white-space:nowrap;}
 .chart-legend .swatch{width:16px; height:3px; border-radius:2px; display:inline-block;}
 .chart-legend .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
 .legend-gradient{width:74px; height:9px; border-radius:5px; background:linear-gradient(90deg,#440154,#3b528b,#21918c,#5ec962,#fde725); display:inline-block;}
@@ -290,6 +301,11 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
   <section class="stats-row" id="statsRow"></section>
 
   <section class="card">
+    <div class="card-head"><div class="card-title">自己ベスト <span>その距離以上を走った記録の中での最速ペース</span></div></div>
+    <div class="pb-row" id="pbRow"></div>
+  </section>
+
+  <section class="card">
     <div class="card-head"><div class="card-title">GOAL LANE <span id="goalRangeLabel"></span></div></div>
     <div class="goal-top">
       <div class="goal-figures">
@@ -312,7 +328,7 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
 
   <!-- ============ CHART (matplotlib-style) ============ -->
   <section class="card">
-    <div class="card-head"><div class="card-title">PACE / DISTANCE <span>元のグラフと同じ配色・レイアウト</span></div></div>
+    <div class="card-head"><div class="card-title">PACE / DISTANCE <span id="chartRangeLabel"></span></div></div>
     <div class="chart-toolbar">
       <label class="check-pill"><input type="checkbox" id="toggleMA" checked> 7日移動平均</label>
       <label class="check-pill"><input type="checkbox" id="toggleReg" checked> 回帰直線</label>
@@ -545,6 +561,20 @@ function recordMatchesFilter(r, filter){
 function getFilteredRecords(){
   return state.records.filter(r=>recordMatchesFilter(r, state.filter)).sort((a,b)=>a.date-b.date);
 }
+// Robust replacement for "show the year only if January happens to be visible":
+// derives the label straight from the actual plotted date range, so it works
+// under any filter/axis range, and folds in the monthly/period total when the
+// visible range is about a month or less.
+function describeChartRange(recs, x0, x1raw){
+  const y0=x0.getFullYear(), y1=x1raw.getFullYear();
+  const m0=x0.getMonth(), m1=x1raw.getMonth();
+  const yearPart = y0===y1 ? `${y0}年` : `${y0}〜${y1}年`;
+  const spanDays = (x1raw-x0)/86400000;
+  const total = d3.sum(recs, r=>r.distance);
+  if(y0===y1 && m0===m1) return `${y0}年${m0+1}月 ・ 月間距離 ${total.toFixed(1)}km`;
+  if(spanDays<=31) return `${yearPart} ・ 期間距離 ${total.toFixed(1)}km`;
+  return yearPart;
+}
 function getEfficiencyRecords(){
   const minDist = state.efMinDistance||0;
   return getFilteredRecords()
@@ -600,6 +630,7 @@ const fDateStart=$('fDateStart'), fDateEnd=$('fDateEnd'), fDistMin=$('fDistMin')
 const filterResetBtn=$('filterResetBtn'), filterStatus=$('filterStatus');
 
 const statsRow=$('statsRow');
+const pbRow=$('pbRow');
 const goalLabelInp=$('goalLabel'), goalTargetInp=$('goalTarget'), goalStartInp=$('goalStart'), goalEndInp=$('goalEnd');
 const goalCur=$('goalCur'), goalTgt=$('goalTgt'), goalPct=$('goalPct'), laneFill=$('laneFill'), laneRunner=$('laneRunner'), goalRangeLabel=$('goalRangeLabel');
 
@@ -614,6 +645,7 @@ efToggleReg.addEventListener('change', ()=>{ state.efChartToggles.showReg = efTo
 efMinDistInp.addEventListener('input', ()=>{ const v=parseFloat(efMinDistInp.value); state.efMinDistance = isNaN(v)?0:Math.max(0,v); renderEfficiencyChart(); });
 const paceMinInp=$('paceMin'), paceMaxInp=$('paceMax'), distMaxInp=$('distMax'), cmapMinInp=$('cmapMin'), cmapMaxInp=$('cmapMax');
 const pngBtn=$('pngBtn');
+const chartRangeLabel=$('chartRangeLabel');
 const tooltip=$('tooltip');
 
 const tableCount=$('tableCount'), recordsTbody=$('recordsTbody'), exportCsvBtn=$('exportCsvBtn'), tableMsg=$('tableMsg');
@@ -949,6 +981,47 @@ function renderStats(){
 }
 
 /* =========================================================
+   12b. PERSONAL BESTS ("champion data")
+   GPS-based split-picking (like Garmin) isn't possible from logged
+   totals alone, so this approximates it: for each reference distance,
+   the fastest pace among *all-time* records covering at least that
+   distance — independent of the chart's date filter, like a stable
+   records page.
+   ========================================================= */
+const PB_DISTANCES = [
+  {label:'1km+', km:1},
+  {label:'5km+', km:5},
+  {label:'10km+', km:10},
+  {label:'ハーフ+', km:21.0975},
+  {label:'フル+', km:42.195},
+];
+function computePersonalBests(records){
+  return PB_DISTANCES.map(d=>{
+    const candidates = records.filter(r=>r.distance>=d.km);
+    if(!candidates.length) return {...d, best:null};
+    const best = candidates.reduce((a,b)=>a.pace<b.pace?a:b);
+    return {...d, best};
+  });
+}
+function renderPersonalBests(){
+  const bests = computePersonalBests(state.records);
+  pbRow.innerHTML='';
+  bests.forEach(pb=>{
+    const div=document.createElement('div'); div.className='pb-card';
+    if(!pb.best){
+      div.innerHTML=`<div class="pb-label">${pb.label}</div><div class="pb-empty">まだ記録なし</div>`;
+    }else{
+      const dateStr = pb.best.date.getFullYear()+'/'+String(pb.best.date.getMonth()+1).padStart(2,'0')+'/'+String(pb.best.date.getDate()).padStart(2,'0');
+      const estTime = formatDurationFromMinutes(pb.best.pace*pb.km);
+      div.innerHTML = `<div class="pb-label">${pb.label}</div>
+        <div class="pb-pace">${paceToStr(pb.best.pace)}<small>/km</small></div>
+        <div class="pb-meta">${dateStr} ・ ${pb.best.distance.toFixed(1)}km走 ・ 目安 ${estTime}</div>`;
+    }
+    pbRow.appendChild(div);
+  });
+}
+
+/* =========================================================
    13. CHART (matplotlib-style: white paper, viridis, black/red lines)
    ========================================================= */
 function chartContainerWidth(svgId){
@@ -975,6 +1048,7 @@ function renderChart(){
     svg.append('text').attr('x',W/2).attr('y',H/2).attr('text-anchor','middle')
       .attr('font-family',"'Inter',sans-serif").attr('font-weight',600)
       .attr('fill','#7A7561').attr('font-size',15).text('表示できる記録がありません（フィルタ条件を確認してください）');
+    chartRangeLabel.textContent = '';
     return;
   }
 
@@ -983,6 +1057,7 @@ function renderChart(){
   const INK = '#1B1B1B';
 
   const x0 = d3.min(recs, r=>r.date), x1raw = d3.max(recs, r=>r.date);
+  chartRangeLabel.textContent = describeChartRange(recs, x0, x1raw);
   const pad = 3*24*3600*1000;
   const x0d = new Date(x0.getTime()-pad), x1d = new Date(x1raw.getTime()+pad);
   const x = d3.scaleTime().domain([x0d,x1d]).range([0,plotW]);
@@ -1334,6 +1409,7 @@ function refreshAll(){
 }
 function renderAll(){
   renderStats();
+  renderPersonalBests();
   renderGoal();
   resetAxisRanges();
   renderChart();
