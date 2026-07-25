@@ -501,6 +501,24 @@ function linearRegression(points){
   const intercept=(sy-slope*sx)/n;
   return {slope, intercept};
 }
+// Rotating x-axis date labels only helps when they'd otherwise overlap; with
+// few, widely-spaced ticks (e.g. a filtered-down or wide chart) horizontal
+// text is more readable. Measure the actual rendered gap vs label width and
+// only rotate when horizontal text would actually collide.
+function orientAxisTicks(axisG, textSel){
+  const positions = axisG.selectAll('.tick').nodes().map(n=>{
+    const m = n.getAttribute('transform').match(/translate\(([-\d.]+)/);
+    return m ? parseFloat(m[1]) : 0;
+  });
+  let minGap = Infinity;
+  for(let i=1;i<positions.length;i++) minGap = Math.min(minGap, positions[i]-positions[i-1]);
+  const maxLabelWidth = Math.max(0, ...textSel.nodes().map(n=>n.getBBox().width));
+  if(positions.length>=2 && maxLabelWidth+8 > minGap){
+    textSel.attr('transform','rotate(-45)').style('text-anchor','end');
+  }else{
+    textSel.attr('transform',null).style('text-anchor','middle');
+  }
+}
 // Shrinks & fades scatter points as they get denser (points per pixel of plot width),
 // so a long history on a narrow screen reads as a trend haze instead of a solid blob.
 function scatterDensityStyle(count, plotWidthPx){
@@ -1117,26 +1135,43 @@ function renderChart(){
   y2G.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',13).attr('font-weight',600);
   const xAxis = d3.axisBottom(x).ticks(Math.min(10, Math.max(4, Math.round(plotW/95)))).tickFormat(d3.timeFormat('%m/%d'));
   const xG = g.append('g').attr('transform',`translate(0,${plotH})`).call(xAxis);
-  xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600).attr('transform','rotate(-45)').style('text-anchor','end');
+  const xTicks = xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600);
+  orientAxisTicks(xG, xTicks);
   g.selectAll('.domain, .tick line').attr('stroke',INK).attr('stroke-width',1.2);
 
   // per-month label (month + distance total), skipped when a month's column is
   // too narrow to hold text without overlapping its neighbors. The year is
   // prefixed on the first visible label and again whenever it changes, so it
   // reads correctly regardless of whether January itself is in view.
+  // Labels vary a lot in length (year prefix, km suffix), so a fixed pixel
+  // threshold isn't enough to prevent overlap — render the longest candidate
+  // first and measure its actual rendered width, falling back to shorter
+  // text (then hiding) until it clears the previous label's right edge.
   let lastYearShown = null;
+  let lastLabelRight = -Infinity;
   monthStarts.forEach((mStart,i)=>{
     const mEnd = i+1<monthStarts.length ? monthStarts[i+1] : x1d;
-    const w = x(mEnd)-x(mStart);
-    if(w<18) return;
-    const yearChanged = lastYearShown===null || mStart.getFullYear()!==lastYearShown;
-    lastYearShown = mStart.getFullYear();
+    const cx = (x(mStart)+x(mEnd))/2;
     const total = d3.sum(recs.filter(r=>r.date>=mStart && r.date<mEnd), r=>r.distance);
-    const monthPart = (yearChanged? mStart.getFullYear()+'年' : '')+(mStart.getMonth()+1)+'月';
-    const label = (w>=46 && total>0) ? `${monthPart} ${total.toFixed(0)}km` : monthPart;
-    g.append('text').attr('x',(x(mStart)+x(mEnd))/2).attr('y',plotH+42)
-      .attr('text-anchor','middle').attr('font-family',FONT_MONO).attr('font-size',10.5).attr('font-weight',600).attr('fill','#4A4536')
-      .text(label);
+    const yearChanged = lastYearShown===null || mStart.getFullYear()!==lastYearShown;
+    const yearPrefix = yearChanged ? mStart.getFullYear()+'年' : '';
+    const monthStr = (mStart.getMonth()+1)+'月';
+    const candidates = [
+      `${yearPrefix}${monthStr}${total>0?' '+total.toFixed(0)+'km':''}`,
+      `${yearPrefix}${monthStr}`,
+      monthStr,
+    ];
+    for(const label of candidates){
+      const t = g.append('text').attr('x',cx).attr('y',plotH+42).attr('text-anchor','middle')
+        .attr('font-family',FONT_MONO).attr('font-size',10.5).attr('font-weight',600).attr('fill','#4A4536').text(label);
+      const bw = t.node().getBBox().width;
+      if(cx-bw/2 >= lastLabelRight+6){
+        lastLabelRight = cx+bw/2;
+        lastYearShown = mStart.getFullYear();
+        break;
+      }
+      t.remove();
+    }
   });
 
   // boxed plot border (matplotlib default spines)
@@ -1237,7 +1272,8 @@ function renderEfficiencyChart(){
   g.append('g').call(yAxis).selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',13).attr('font-weight',600);
   const xAxis = d3.axisBottom(x).ticks(Math.min(10, Math.max(4, Math.round(efPlotW/95)))).tickFormat(d3.timeFormat('%m/%d'));
   const xG = g.append('g').attr('transform',`translate(0,${efPlotH})`).call(xAxis);
-  xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600).attr('transform','rotate(-45)').style('text-anchor','end');
+  const xTicks = xG.selectAll('text').attr('font-family',FONT_MONO).attr('fill',INK).attr('font-size',12).attr('font-weight',600);
+  orientAxisTicks(xG, xTicks);
   g.selectAll('.domain, .tick line').attr('stroke',INK).attr('stroke-width',1.2);
 
   g.append('rect').attr('x',0).attr('y',0).attr('width',efPlotW).attr('height',efPlotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
