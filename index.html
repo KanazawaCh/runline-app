@@ -616,7 +616,7 @@ function getEfficiencyRecords(){
   const minDist = state.efMinDistance||0;
   return getFilteredRecords()
     .filter(r=>r.avgHr!=null && r.avgHr>0 && r.distance>=minDist)
-    .map(r=>({date:r.date, ef: ((60/r.pace)/r.avgHr)*100}));
+    .map(r=>({...r, ef: ((60/r.pace)/r.avgHr)*100}));
 }
 function isDup(a,b){
   return a.date.getTime()===b.date.getTime() && Math.abs(a.distance-b.distance)<0.001 && Math.abs(a.pace-b.pace)<0.001 && !!a.isOut===!!b.isOut;
@@ -1461,9 +1461,18 @@ function renderEfficiencyChart(){
     .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text(tr('axisEf'));
 }
 
+// Shared by both charts so hovering any point shows the record's full stats
+// (pace, distance, HR, and the derived EF when HR is available), not just
+// the one or two fields that particular chart happens to plot.
+function buildStatsTooltipHtml(r){
+  const dateStr = r.date.getFullYear()+'/'+String(r.date.getMonth()+1).padStart(2,'0')+'/'+String(r.date.getDate()).padStart(2,'0');
+  const lines = [`${tr('tooltipPace')} ${paceToStr(r.pace)}/km`, `${tr('tooltipDistance')} ${r.distance.toFixed(1)} km`];
+  if(r.avgHr!=null) lines.push(`${tr('thAvgHr')} ${r.avgHr.toFixed(0)} bpm`);
+  if(r.avgHr!=null && r.avgHr>0) lines.push(`EF ${(((60/r.pace)/r.avgHr)*100).toFixed(2)}`);
+  return `<div class="tt-date">${dateStr}${r.isOut ? ` <span class="tt-out">${tr('tooltipOut')}</span>` : ''}</div>${lines.join('<br>')}`;
+}
 function showEfTooltip(event,d){
-  const dateStr = d.date.getFullYear()+'/'+String(d.date.getMonth()+1).padStart(2,'0')+'/'+String(d.date.getDate()).padStart(2,'0');
-  tooltip.innerHTML = `<div class="tt-date">${dateStr}</div>EF ${d.ef.toFixed(2)}`;
+  tooltip.innerHTML = buildStatsTooltipHtml(d);
   const containerRect = document.querySelector('#efChart').closest('.chart-wrap').getBoundingClientRect();
   tooltip.style.left = (event.clientX - containerRect.left + 14) + 'px';
   tooltip.style.top = (event.clientY - containerRect.top - 10) + 'px';
@@ -1471,8 +1480,7 @@ function showEfTooltip(event,d){
 }
 
 function showTooltip(event,d){
-  const dateStr = d.date.getFullYear()+'/'+String(d.date.getMonth()+1).padStart(2,'0')+'/'+String(d.date.getDate()).padStart(2,'0');
-  tooltip.innerHTML = `<div class="tt-date">${dateStr}${d.isOut ? ` <span class="tt-out">${tr('tooltipOut')}</span>` : ''}</div>${tr('tooltipPace')} ${paceToStr(d.pace)}/km<br>${tr('tooltipDistance')} ${d.distance.toFixed(1)} km`;
+  tooltip.innerHTML = buildStatsTooltipHtml(d);
   const containerRect = document.querySelector('.chart-wrap').getBoundingClientRect();
   tooltip.style.left = (event.clientX - containerRect.left + 14) + 'px';
   tooltip.style.top = (event.clientY - containerRect.top - 10) + 'px';
