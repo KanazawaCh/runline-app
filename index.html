@@ -189,7 +189,7 @@ tbody tr:hover{background:var(--card-2);}
 .out-badge{color:var(--track-red);}
 .table-empty{padding:24px; text-align:center; color:var(--muted); font-size:13px;}
 
-.tooltip{position:absolute; pointer-events:none; background:#0C0E12; border:1px solid var(--line); border-radius:8px; padding:9px 12px; font-family:var(--font-mono); font-size:12px; color:var(--chalk); line-height:1.6; box-shadow:0 8px 24px rgba(0,0,0,.4); opacity:0; transition:opacity .1s; z-index:20; white-space:nowrap;}
+.tooltip{position:fixed; pointer-events:none; background:#0C0E12; border:1px solid var(--line); border-radius:8px; padding:9px 12px; font-family:var(--font-mono); font-size:12px; color:var(--chalk); line-height:1.6; box-shadow:0 8px 24px rgba(0,0,0,.4); opacity:0; transition:opacity .1s; z-index:50; white-space:nowrap;}
 .tooltip .tt-date{color:var(--muted); font-size:11px;}
 .tooltip .tt-out{color:var(--track-red);}
 
@@ -1480,24 +1480,26 @@ function buildStatsTooltipHtml(r){
   if(r.avgHr!=null && r.avgHr>0) lines.push(`EF ${(((60/r.pace)/r.avgHr)*100).toFixed(2)}`);
   return `<div class="tt-date">${dateStr}${r.isOut ? ` <span class="tt-out">${tr('tooltipOut')}</span>` : ''}</div>${lines.join('<br>')}`;
 }
+// position:fixed + viewport-relative clientX/clientY, so the tooltip lands
+// under the cursor regardless of how far the page is scrolled (it previously
+// measured the offset from the chart's viewport position but then applied it
+// as an absolute offset from the top of the whole document, so on a scrolled
+// page it rendered far off-screen).
+function positionTooltipAt(event){
+  tooltip.style.left = (event.clientX + 14) + 'px';
+  tooltip.style.top = (event.clientY - 10) + 'px';
+  tooltip.style.opacity = 1;
+}
 function showEfTooltip(event,d){
   tooltip.innerHTML = buildStatsTooltipHtml(d);
-  const containerRect = document.querySelector('#efChart').closest('.chart-wrap').getBoundingClientRect();
-  tooltip.style.left = (event.clientX - containerRect.left + 14) + 'px';
-  tooltip.style.top = (event.clientY - containerRect.top - 10) + 'px';
-  tooltip.style.opacity = 1;
+  positionTooltipAt(event);
 }
 
 function showTooltip(event,d){
   tooltip.innerHTML = buildStatsTooltipHtml(d);
-  const containerRect = document.querySelector('.chart-wrap').getBoundingClientRect();
-  tooltip.style.left = (event.clientX - containerRect.left + 14) + 'px';
-  tooltip.style.top = (event.clientY - containerRect.top - 10) + 'px';
-  tooltip.style.opacity = 1;
+  positionTooltipAt(event);
 }
 function hideTooltip(){ tooltip.style.opacity = 0; }
-document.querySelector('.chart-wrap').style.position='relative';
-tooltip.style.position='absolute';
 
 /* =========================================================
    14. PNG EXPORT
