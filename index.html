@@ -61,7 +61,8 @@ body{background:var(--ink); color:var(--chalk); font-family:var(--font-body); mi
 .danger-link{font-size:12.5px; color:var(--muted); background:none; border:1px solid var(--line); padding:7px 14px; border-radius:999px; cursor:pointer;}
 .danger-link:hover{border-color:var(--track-red); color:var(--track-red);}
 .lang-switch{display:flex; border:1px solid var(--line); border-radius:999px; overflow:hidden;}
-.lang-switch button{font-size:16px; line-height:1; background:var(--card-2); border:none; padding:6px 11px; cursor:pointer; opacity:.45; filter:grayscale(70%); transition:opacity .12s, filter .12s;}
+.lang-switch button{display:flex; align-items:center; background:var(--card-2); border:none; padding:8px 11px; cursor:pointer; opacity:.45; filter:grayscale(70%); transition:opacity .12s, filter .12s;}
+.lang-switch button svg{display:block; border-radius:2px;}
 .lang-switch button.active{background:var(--card); opacity:1; filter:none;}
 .lang-switch button:hover:not(.active){opacity:.8; filter:grayscale(30%);}
 
@@ -219,8 +220,16 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
     <div class="topbar-right">
       <span class="storage-pill" id="storagePill" data-i18n="storagePill">この端末に保存</span>
       <div class="lang-switch" id="langSwitch">
-        <button type="button" data-lang="ja" title="日本語" aria-label="日本語">🇯🇵</button>
-        <button type="button" data-lang="en" title="English" aria-label="English">🇺🇸</button>
+        <button type="button" data-lang="ja" title="日本語" aria-label="日本語">
+          <svg viewBox="0 0 30 20" width="22" height="15" aria-hidden="true"><rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#BC002D"/></svg>
+        </button>
+        <button type="button" data-lang="en" title="English" aria-label="English">
+          <svg viewBox="0 0 30 20" width="22" height="15" aria-hidden="true">
+            <rect width="30" height="20" fill="#B22234"/>
+            <g fill="#fff"><rect y="1.54" width="30" height="1.54"/><rect y="4.62" width="30" height="1.54"/><rect y="7.69" width="30" height="1.54"/><rect y="10.77" width="30" height="1.54"/><rect y="13.85" width="30" height="1.54"/><rect y="16.92" width="30" height="1.54"/></g>
+            <rect width="12" height="10.77" fill="#3C3B6E"/>
+          </svg>
+        </button>
       </div>
       <button class="toggle-btn" id="paceTableBtn" type="button" data-i18n="paceTableBtn">速度参考表</button>
       <button class="danger-link" id="clearAllBtn" data-i18n="clearAllBtn">全データを削除</button>
