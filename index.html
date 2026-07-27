@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RUNLINE ― 走った記録を、伸びとして見る</title>
+<title data-i18n="pageTitle">RUNLINE ― 走った記録を、伸びとして見る</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -60,6 +60,10 @@ body{background:var(--ink); color:var(--chalk); font-family:var(--font-body); mi
 .storage-pill{font-family:var(--font-mono); font-size:11px; color:var(--muted-2); border:1px solid var(--line); padding:5px 10px; border-radius:999px;}
 .danger-link{font-size:12.5px; color:var(--muted); background:none; border:1px solid var(--line); padding:7px 14px; border-radius:999px; cursor:pointer;}
 .danger-link:hover{border-color:var(--track-red); color:var(--track-red);}
+.lang-switch{display:flex; border:1px solid var(--line); border-radius:999px; overflow:hidden;}
+.lang-switch button{font-family:var(--font-mono); font-size:11px; font-weight:600; color:var(--muted); background:var(--card-2); border:none; padding:7px 12px; cursor:pointer;}
+.lang-switch button.active{background:var(--lane-lime); color:#12160A;}
+.lang-switch button:hover:not(.active){color:var(--chalk);}
 
 /* ---------- generic card ---------- */
 .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px;}
@@ -211,68 +215,72 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
 
   <div class="topbar">
     <div class="brand"><span class="brand-mark"></span>RUNLINE</div>
-    <div class="brand-sub">走った記録を、伸びとして見る。</div>
+    <div class="brand-sub" data-i18n="brandSub">走った記録を、伸びとして見る。</div>
     <div class="topbar-right">
-      <span class="storage-pill" id="storagePill">この端末に保存</span>
-      <button class="toggle-btn" id="paceTableBtn" type="button">速度参考表</button>
-      <button class="danger-link" id="clearAllBtn">全データを削除</button>
+      <span class="storage-pill" id="storagePill" data-i18n="storagePill">この端末に保存</span>
+      <div class="lang-switch" id="langSwitch">
+        <button type="button" data-lang="ja">JA</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <button class="toggle-btn" id="paceTableBtn" type="button" data-i18n="paceTableBtn">速度参考表</button>
+      <button class="danger-link" id="clearAllBtn" data-i18n="clearAllBtn">全データを削除</button>
     </div>
   </div>
 
   <!-- ============ CAPTURE (manual entry / csv import) ============ -->
   <section class="card">
     <div class="card-head">
-      <div class="card-title">記録の追加 <span>手入力、またはCSVから取り込み</span></div>
+      <div class="card-title"><span data-i18n="captureTitle">記録の追加</span> <span data-i18n="captureSub">手入力、またはCSVから取り込み</span></div>
       <div class="capture-tabs">
-        <button class="tab-btn active" id="tabBtnManual" type="button">手入力</button>
-        <button class="tab-btn" id="tabBtnCsv" type="button">CSVインポート</button>
+        <button class="tab-btn active" id="tabBtnManual" type="button" data-i18n="tabManual">手入力</button>
+        <button class="tab-btn" id="tabBtnCsv" type="button" data-i18n="tabCsv">CSVインポート</button>
       </div>
     </div>
 
     <div id="tabManual">
       <form class="manual-grid" id="manualForm">
-        <div class="field"><label for="mDate">日付</label><input type="date" id="mDate" required></div>
-        <div class="field"><label for="mDist">距離 (km)</label><input type="number" id="mDist" step="0.1" min="0" required></div>
-        <div class="field"><label for="mDurH">時間：時</label><input type="number" id="mDurH" min="0" max="23" value="0"></div>
-        <div class="field"><label for="mDurM">時間：分</label><input type="number" id="mDurM" min="0" max="59" required></div>
-        <div class="field"><label for="mDurS">時間：秒</label><input type="number" id="mDurS" min="0" max="59" value="0"></div>
-        <div class="field"><label for="mHr">平均心拍数 <span class="opt-tag">任意</span></label><input type="number" id="mHr" min="0" max="250" placeholder="例: 152"></div>
-        <div class="field"><label for="mInOut">場所</label>
-          <select id="mInOut"><option value="in">屋内</option><option value="out">屋外</option></select>
+        <div class="field"><label for="mDate" data-i18n="fDate">日付</label><input type="date" id="mDate" required></div>
+        <div class="field"><label for="mDist" data-i18n="fDist">距離 (km)</label><input type="number" id="mDist" step="0.1" min="0" required></div>
+        <div class="field"><label for="mDurH" data-i18n="fDurH">時間：時</label><input type="number" id="mDurH" min="0" max="23" value="0"></div>
+        <div class="field"><label for="mDurM" data-i18n="fDurM">時間：分</label><input type="number" id="mDurM" min="0" max="59" required></div>
+        <div class="field"><label for="mDurS" data-i18n="fDurS">時間：秒</label><input type="number" id="mDurS" min="0" max="59" value="0"></div>
+        <div class="field"><label for="mHr"><span data-i18n="fHr">平均心拍数</span> <span class="opt-tag" data-i18n="optional">任意</span></label><input type="number" id="mHr" min="0" max="250" placeholder="例: 152" data-i18n-placeholder="hrPlaceholder"></div>
+        <div class="field"><label for="mInOut" data-i18n="fLocation">場所</label>
+          <select id="mInOut"><option value="in" data-i18n="indoor">屋内</option><option value="out" data-i18n="outdoor">屋外</option></select>
         </div>
         <div class="field pace-preview-field">
-          <label>ペース（自動計算）</label>
+          <label data-i18n="fPaceAuto">ペース（自動計算）</label>
           <div class="pace-preview" id="pacePreview">--'--"/km</div>
         </div>
         <div class="manual-actions">
-          <button type="submit" class="btn btn-primary" id="manualSubmitBtn">記録を追加</button>
-          <button type="button" class="btn btn-ghost hidden" id="manualCancelBtn">キャンセル</button>
+          <button type="submit" class="btn btn-primary" id="manualSubmitBtn" data-i18n="addRecord">記録を追加</button>
+          <button type="button" class="btn btn-ghost hidden" id="manualCancelBtn" data-i18n="cancel">キャンセル</button>
         </div>
       </form>
       <div class="err-msg hidden" id="manualErr"></div>
     </div>
 
     <div id="tabCsv" class="hidden">
-      <label class="check-pill" style="margin-bottom:10px;"><input type="checkbox" id="csvReplaceAll"> このCSVで全データを置き換える（既存の記録は削除されます）</label>
+      <label class="check-pill" style="margin-bottom:10px;"><input type="checkbox" id="csvReplaceAll"> <span data-i18n="csvReplaceAll">このCSVで全データを置き換える（既存の記録は削除されます）</span></label>
       <div class="dropzone" id="dropzone">
-        <h3>CSVをドロップ、または選択</h3>
+        <h3 data-i18n="dropTitle">CSVをドロップ、または選択</h3>
 
-        <p>取り込んだ内容は既存の記録に追加されます（端末内で処理・送信されません）</p>
+        <p data-i18n="dropDesc">取り込んだ内容は既存の記録に追加されます（端末内で処理・送信されません）</p>
         <div class="dz-actions">
-          <button class="btn btn-primary btn-sm" id="browseBtn" type="button">ファイルを選ぶ</button>
+          <button class="btn btn-primary btn-sm" id="browseBtn" type="button" data-i18n="chooseFile">ファイルを選ぶ</button>
         </div>
         <input type="file" id="fileInput" accept=".csv,text/csv">
       </div>
       <div class="mapping-card hidden" id="mappingCard">
         <div class="mapping-grid">
-          <div class="field"><label for="mapDate">日付列</label><select id="mapDate"></select></div>
-          <div class="field"><label for="mapDist">距離列</label><select id="mapDist"></select></div>
-          <div class="field"><label for="mapPace">ペース列</label><select id="mapPace"></select></div>
-          <div class="field"><label for="mapInOut">In/Out列（任意）</label><select id="mapInOut"></select></div>
-          <div class="field"><label for="mapHr">平均心拍数列（任意）</label><select id="mapHr"></select></div>
+          <div class="field"><label for="mapDate" data-i18n="mapDate">日付列</label><select id="mapDate"></select></div>
+          <div class="field"><label for="mapDist" data-i18n="mapDist">距離列</label><select id="mapDist"></select></div>
+          <div class="field"><label for="mapPace" data-i18n="mapPace">ペース列</label><select id="mapPace"></select></div>
+          <div class="field"><label for="mapInOut" data-i18n="mapInOut">In/Out列（任意）</label><select id="mapInOut"></select></div>
+          <div class="field"><label for="mapHr" data-i18n="mapHr">平均心拍数列（任意）</label><select id="mapHr"></select></div>
         </div>
-        <div class="mapping-hint">列名から自動検出しています。違う場合は選び直してから反映してください。</div>
-        <div style="margin-top:12px;"><button class="btn btn-primary btn-sm" id="applyMapBtn" type="button">この対応で取り込む</button></div>
+        <div class="mapping-hint" data-i18n="mappingHint">列名から自動検出しています。違う場合は選び直してから反映してください。</div>
+        <div style="margin-top:12px;"><button class="btn btn-primary btn-sm" id="applyMapBtn" type="button" data-i18n="applyMap">この対応で取り込む</button></div>
       </div>
       <div class="err-msg hidden" id="csvErr"></div>
       <div class="toast hidden" id="csvToast"></div>
@@ -280,26 +288,26 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
 
 
     <div class="empty-hint hidden" id="emptyHint">
-      <span>まだ記録がありません。上のフォームから追加するか、サンプルで試せます。</span>
-      <button class="btn btn-ghost btn-sm" id="sampleBtn" type="button">サンプルを読み込む</button>
+      <span data-i18n="emptyHint">まだ記録がありません。上のフォームから追加するか、サンプルで試せます。</span>
+      <button class="btn btn-ghost btn-sm" id="sampleBtn" type="button" data-i18n="loadSample">サンプルを読み込む</button>
     </div>
   </section>
 
   <!-- ============ FILTER ============ -->
   <section class="card">
     <div class="card-head">
-      <div class="card-title">フィルタ <span>グラフと一覧に反映されます</span></div>
-      <button class="toggle-btn" id="filterResetBtn" type="button">条件をクリア</button>
+      <div class="card-title"><span data-i18n="filterTitle">フィルタ</span> <span data-i18n="filterSub">グラフと一覧に反映されます</span></div>
+      <button class="toggle-btn" id="filterResetBtn" type="button" data-i18n="filterReset">条件をクリア</button>
     </div>
     <div class="filter-grid">
-      <div class="field"><label for="fDateStart">期間（開始）</label><input type="date" id="fDateStart"></div>
-      <div class="field"><label for="fDateEnd">期間（終了）</label><input type="date" id="fDateEnd"></div>
-      <div class="field"><label for="fDistMin">距離 最小 (km)</label><input type="number" id="fDistMin" step="0.5" placeholder="指定なし"></div>
-      <div class="field"><label for="fDistMax">距離 最大 (km)</label><input type="number" id="fDistMax" step="0.5" placeholder="指定なし"></div>
-      <div class="field"><label for="fPaceMin">ペース 最速 (分/km)</label><input type="number" id="fPaceMin" step="0.1" placeholder="指定なし"></div>
-      <div class="field"><label for="fPaceMax">ペース 最遅 (分/km)</label><input type="number" id="fPaceMax" step="0.1" placeholder="指定なし"></div>
-      <div class="field"><label for="fInOut">屋内 / 屋外</label>
-        <select id="fInOut"><option value="all">すべて</option><option value="out">屋外のみ</option><option value="in">屋内のみ</option></select>
+      <div class="field"><label for="fDateStart" data-i18n="fPeriodStart">期間（開始）</label><input type="date" id="fDateStart"></div>
+      <div class="field"><label for="fDateEnd" data-i18n="fPeriodEnd">期間（終了）</label><input type="date" id="fDateEnd"></div>
+      <div class="field"><label for="fDistMin" data-i18n="fDistMin">距離 最小 (km)</label><input type="number" id="fDistMin" step="0.5" placeholder="指定なし" data-i18n-placeholder="noSpecify"></div>
+      <div class="field"><label for="fDistMax" data-i18n="fDistMax">距離 最大 (km)</label><input type="number" id="fDistMax" step="0.5" placeholder="指定なし" data-i18n-placeholder="noSpecify"></div>
+      <div class="field"><label for="fPaceMin" data-i18n="fPaceMinFast">ペース 最速 (分/km)</label><input type="number" id="fPaceMin" step="0.1" placeholder="指定なし" data-i18n-placeholder="noSpecify"></div>
+      <div class="field"><label for="fPaceMax" data-i18n="fPaceMaxSlow">ペース 最遅 (分/km)</label><input type="number" id="fPaceMax" step="0.1" placeholder="指定なし" data-i18n-placeholder="noSpecify"></div>
+      <div class="field"><label for="fInOut" data-i18n="fInOutLabel">屋内 / 屋外</label>
+        <select id="fInOut"><option value="all" data-i18n="all">すべて</option><option value="out" data-i18n="outdoorOnly">屋外のみ</option><option value="in" data-i18n="indoorOnly">屋内のみ</option></select>
       </div>
     </div>
     <div class="filter-status" id="filterStatus"></div>
@@ -308,7 +316,7 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
   <section class="stats-row" id="statsRow"></section>
 
   <section class="card">
-    <div class="card-head"><div class="card-title">自己ベスト <span>その距離以上を走った記録の中での最速ペース</span></div></div>
+    <div class="card-head"><div class="card-title"><span data-i18n="pbTitle">自己ベスト</span> <span data-i18n="pbSub">その距離以上を走った記録の中での最速ペース</span></div></div>
     <div class="pb-row" id="pbRow"></div>
   </section>
 
@@ -326,10 +334,10 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
       <div class="lane-finish"></div>
     </div>
     <div class="goal-controls">
-      <div class="field"><label for="goalLabel">目標名</label><input type="text" id="goalLabel" value="今期の目標"></div>
-      <div class="field"><label for="goalTarget">目標距離 (km)</label><input type="number" id="goalTarget" step="1" min="1"></div>
-      <div class="field"><label for="goalStart">集計開始日</label><input type="date" id="goalStart"></div>
-      <div class="field"><label for="goalEnd">集計終了日</label><input type="date" id="goalEnd"></div>
+      <div class="field"><label for="goalLabel" data-i18n="goalLabelField">目標名</label><input type="text" id="goalLabel" value="今期の目標"></div>
+      <div class="field"><label for="goalTarget" data-i18n="goalTargetField">目標距離 (km)</label><input type="number" id="goalTarget" step="1" min="1"></div>
+      <div class="field"><label for="goalStart" data-i18n="goalStartField">集計開始日</label><input type="date" id="goalStart"></div>
+      <div class="field"><label for="goalEnd" data-i18n="goalEndField">集計終了日</label><input type="date" id="goalEnd"></div>
     </div>
   </section>
 
@@ -337,63 +345,63 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
   <section class="card">
     <div class="card-head"><div class="card-title">PACE / DISTANCE</div></div>
     <div class="chart-toolbar">
-      <label class="check-pill"><input type="checkbox" id="toggleMA" checked> 7日移動平均</label>
-      <label class="check-pill"><input type="checkbox" id="toggleReg" checked> 回帰直線</label>
+      <label class="check-pill"><input type="checkbox" id="toggleMA" checked> <span data-i18n="ma7">7日移動平均</span></label>
+      <label class="check-pill"><input type="checkbox" id="toggleReg" checked> <span data-i18n="regLine">回帰直線</span></label>
       <div class="toolbar-spacer"></div>
-      <button class="toggle-btn" id="advToggle" type="button">軸の詳細設定</button>
-      <button class="toggle-btn" id="pngBtn" type="button">PNG書き出し</button>
+      <button class="toggle-btn" id="advToggle" type="button" data-i18n="advToggle">軸の詳細設定</button>
+      <button class="toggle-btn" id="pngBtn" type="button" data-i18n="pngExport">PNG書き出し</button>
     </div>
     <div class="adv-panel hidden" id="advPanel">
-      <div class="field"><label for="paceMin">ペース上限(速)</label><input type="number" id="paceMin" step="0.1"></div>
-      <div class="field"><label for="paceMax">ペース下限(遅)</label><input type="number" id="paceMax" step="0.1"></div>
-      <div class="field"><label for="distMax">週間距離 上限(km)</label><input type="number" id="distMax" step="5"></div>
-      <div class="field"><label for="cmapMin">配色 最短(km)</label><input type="number" id="cmapMin" step="0.5"></div>
-      <div class="field"><label for="cmapMax">配色 最長(km)</label><input type="number" id="cmapMax" step="0.5"></div>
-      <div class="field" style="grid-column:1/-1;"><button class="btn btn-ghost btn-sm" id="autoRangeBtn" type="button">自動調整</button></div>
+      <div class="field"><label for="paceMin" data-i18n="paceMinLbl">ペース上限(速)</label><input type="number" id="paceMin" step="0.1"></div>
+      <div class="field"><label for="paceMax" data-i18n="paceMaxLbl">ペース下限(遅)</label><input type="number" id="paceMax" step="0.1"></div>
+      <div class="field"><label for="distMax" data-i18n="distMaxLbl">週間距離 上限(km)</label><input type="number" id="distMax" step="5"></div>
+      <div class="field"><label for="cmapMin" data-i18n="cmapMinLbl">配色 最短(km)</label><input type="number" id="cmapMin" step="0.5"></div>
+      <div class="field"><label for="cmapMax" data-i18n="cmapMaxLbl">配色 最長(km)</label><input type="number" id="cmapMax" step="0.5"></div>
+      <div class="field" style="grid-column:1/-1;"><button class="btn btn-ghost btn-sm" id="autoRangeBtn" type="button" data-i18n="autoRange">自動調整</button></div>
     </div>
     <div class="chart-wrap"><svg id="chart"></svg></div>
     <div class="chart-legend">
-      <div class="item"><span class="legend-gradient"></span>距離（viridis配色）</div>
-      <div class="item"><span class="dot" style="border:2px solid var(--track-red); background:transparent;"></span>屋外 (Out)</div>
-      <div class="item"><span class="swatch" style="background:#111;"></span>7日移動平均</div>
-      <div class="item"><span class="swatch" style="background:#D62728;"></span>回帰直線（トレンド）</div>
-      <div class="item"><span class="swatch" style="background:#7B4FA0; height:8px; border-radius:2px;"></span>週間距離（棒）</div>
+      <div class="item"><span class="legend-gradient"></span><span data-i18n="legendDistance">距離（viridis配色）</span></div>
+      <div class="item"><span class="dot" style="border:2px solid var(--track-red); background:transparent;"></span><span data-i18n="legendOut">屋外 (Out)</span></div>
+      <div class="item"><span class="swatch" style="background:#111;"></span><span data-i18n="ma7">7日移動平均</span></div>
+      <div class="item"><span class="swatch" style="background:#D62728;"></span><span data-i18n="legendReg">回帰直線（トレンド）</span></div>
+      <div class="item"><span class="swatch" style="background:#7B4FA0; height:8px; border-radius:2px;"></span><span data-i18n="legendWeekly">週間距離（棒）</span></div>
     </div>
   </section>
 
   <!-- ============ EFFICIENCY (avgHR vs pace over time) ============ -->
   <section class="card">
-    <div class="card-head"><div class="card-title">心拍効率 <span>EF = 速度(km/h) ÷ 平均心拍数 × 100・高いほど効率が良い</span></div></div>
+    <div class="card-head"><div class="card-title"><span data-i18n="efTitle">心拍効率</span> <span data-i18n="efSub">EF = 速度(km/h) ÷ 平均心拍数 × 100・高いほど効率が良い</span></div></div>
     <div class="chart-toolbar">
-      <label class="check-pill"><input type="checkbox" id="efToggleMA" checked> 7日移動平均</label>
-      <label class="check-pill"><input type="checkbox" id="efToggleReg" checked> 回帰直線</label>
-      <div class="field" style="width:180px;"><label for="efMinDist">対象: 距離 (km) 以上</label><input type="number" id="efMinDist" step="0.5" min="0" value="0"></div>
+      <label class="check-pill"><input type="checkbox" id="efToggleMA" checked> <span data-i18n="ma7">7日移動平均</span></label>
+      <label class="check-pill"><input type="checkbox" id="efToggleReg" checked> <span data-i18n="regLine">回帰直線</span></label>
+      <div class="field" style="width:180px;"><label for="efMinDist" data-i18n="efMinDistLbl">対象: 距離 (km) 以上</label><input type="number" id="efMinDist" step="0.5" min="0" value="0"></div>
       <div class="toolbar-spacer"></div>
     </div>
     <div class="chart-wrap"><svg id="efChart"></svg></div>
     <div class="chart-legend">
-      <div class="item"><span class="dot" style="background:var(--lane-lime); border:none;"></span>EF（心拍数入力がある記録のみ）</div>
-      <div class="item"><span class="swatch" style="background:#111;"></span>7日移動平均</div>
-      <div class="item"><span class="swatch" style="background:#D62728;"></span>回帰直線（トレンド）</div>
+      <div class="item"><span class="dot" style="background:var(--lane-lime); border:none;"></span><span data-i18n="legendEf">EF（心拍数入力がある記録のみ）</span></div>
+      <div class="item"><span class="swatch" style="background:#111;"></span><span data-i18n="ma7">7日移動平均</span></div>
+      <div class="item"><span class="swatch" style="background:#D62728;"></span><span data-i18n="legendReg">回帰直線（トレンド）</span></div>
     </div>
   </section>
 
   <!-- ============ TABLE ============ -->
   <section class="card">
     <div class="card-head">
-      <div class="card-title">記録一覧 <span id="tableCount"></span></div>
-      <button class="toggle-btn" id="exportCsvBtn" type="button">表示中のデータをCSVで書き出す</button>
+      <div class="card-title"><span data-i18n="tableTitle">記録一覧</span> <span id="tableCount"></span></div>
+      <button class="toggle-btn" id="exportCsvBtn" type="button" data-i18n="exportCsv">表示中のデータをCSVで書き出す</button>
     </div>
     <div class="err-msg hidden" id="tableMsg"></div>
     <div class="table-wrap">
       <table id="recordsTable">
         <thead>
           <tr>
-            <th data-key="date">日付</th>
-            <th data-key="isOut">場所</th>
-            <th data-key="distance">距離 (km)</th>
-            <th data-key="pace">ペース (/km)</th>
-            <th data-key="avgHr">平均心拍数</th>
+            <th data-key="date" data-i18n="thDate">日付</th>
+            <th data-key="isOut" data-i18n="thLocation">場所</th>
+            <th data-key="distance" data-i18n="thDistance">距離 (km)</th>
+            <th data-key="pace" data-i18n="thPace">ペース (/km)</th>
+            <th data-key="avgHr" data-i18n="thAvgHr">平均心拍数</th>
             <th></th>
           </tr>
         </thead>
@@ -402,14 +410,14 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
     </div>
   </section>
 
-  <footer class="note">データはこの端末のブラウザ内（localStorage）だけに保存され、どこにも送信されません。</footer>
+  <footer class="note" data-i18n="footerNote">データはこの端末のブラウザ内（localStorage）だけに保存され、どこにも送信されません。</footer>
 </div>
 
 <div class="modal-overlay hidden" id="paceModalOverlay">
   <div class="modal-box">
     <div class="modal-head">
-      <div class="card-title">速度参考表 <span>mph → km/h・0.1mph刻み・一定ペース換算の目安タイム</span></div>
-      <button class="icon-btn" id="paceModalClose" type="button">閉じる</button>
+      <div class="card-title"><span data-i18n="paceModalTitle">速度参考表</span> <span data-i18n="paceModalSub">mph → km/h・0.1mph刻み・一定ペース換算の目安タイム</span></div>
+      <button class="icon-btn" id="paceModalClose" type="button" data-i18n="close">閉じる</button>
     </div>
     <div class="table-wrap modal-table-wrap">
       <table id="paceRefTable">
@@ -421,12 +429,12 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
           <tr>
             <th>mph</th>
             <th>km/h</th>
-            <th>ペース (/km)</th>
+            <th data-i18n="thPace">ペース (/km)</th>
             <th>1km</th>
             <th>5km</th>
             <th>10km</th>
-            <th>ハーフ</th>
-            <th>フル</th>
+            <th data-i18n="half">ハーフ</th>
+            <th data-i18n="full">フル</th>
           </tr>
         </thead>
         <tbody id="paceRefTbody"></tbody>
@@ -464,6 +472,15 @@ function paceToStr(min){
   let m=Math.floor(min), s=Math.round((min-m)*60);
   if(s===60){ s=0; m+=1; }
   return m+"'"+String(s).padStart(2,'0')+'"';
+}
+const MONTH_NAMES_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function formatMonthLabel(date, includeYear){
+  if(state.lang==='en') return MONTH_NAMES_EN[date.getMonth()] + (includeYear? ' '+date.getFullYear() : '');
+  return (includeYear? date.getFullYear()+'年' : '') + (date.getMonth()+1)+'月';
+}
+function formatYearBadge(y0, y1){
+  const range = y0===y1 ? `${y0}` : `${y0}–${y1}`;
+  return state.lang==='en' ? range : range+'年';
 }
 function parseDateFlexible(raw){
   if(raw===null||raw===undefined) return null;
@@ -563,7 +580,12 @@ function saveStore(records){
 /* =========================================================
    3. STATE
    ========================================================= */
+const LANG_KEY = 'runline_lang';
+function loadLang(){
+  try{ const v = window.localStorage.getItem(LANG_KEY); return v==='en' ? 'en' : 'ja'; }catch(e){ return 'ja'; }
+}
 const state = {
+  lang: loadLang(),
   records: loadStore(),
   editingId: null,
   headers: [], rawRows: [], mapping:{date:null,dist:null,pace:null,inout:null,hr:null},
@@ -631,6 +653,134 @@ function buildSampleRecords(){
 /* =========================================================
    4. DOM REFS
    ========================================================= */
+/* =========================================================
+   0. I18N
+   ========================================================= */
+const I18N = {
+  ja: {
+    pageTitle:'RUNLINE ― 走った記録を、伸びとして見る', brandSub:'走った記録を、伸びとして見る。',
+    storagePill:'この端末に保存', storageFail:'保存できません（プライベートモード等）',
+    paceTableBtn:'速度参考表', clearAllBtn:'全データを削除',
+    captureTitle:'記録の追加', captureSub:'手入力、またはCSVから取り込み',
+    tabManual:'手入力', tabCsv:'CSVインポート',
+    fDate:'日付', fDist:'距離 (km)', fDurH:'時間：時', fDurM:'時間：分', fDurS:'時間：秒',
+    fHr:'平均心拍数', optional:'任意', hrPlaceholder:'例: 152',
+    fLocation:'場所', indoor:'屋内', outdoor:'屋外', fPaceAuto:'ペース（自動計算）',
+    addRecord:'記録を追加', updateRecord:'記録を更新', cancel:'キャンセル',
+    manualErrMsg:'日付・距離・時間を正しく入力してください（時間はすべて0にはできません）。',
+    confirmDeleteRecord:'この記録を削除しますか？',
+    csvReplaceAll:'このCSVで全データを置き換える（既存の記録は削除されます）',
+    dropTitle:'CSVをドロップ、または選択', dropDesc:'取り込んだ内容は既存の記録に追加されます（端末内で処理・送信されません）',
+    chooseFile:'ファイルを選ぶ',
+    mapDate:'日付列', mapDist:'距離列', mapPace:'ペース列', mapInOut:'In/Out列（任意）', mapHr:'平均心拍数列（任意）',
+    mapNone:'（なし）',
+    mappingHint:'列名から自動検出しています。違う場合は選び直してから反映してください。',
+    applyMap:'この対応で取り込む',
+    csvReadError:'ファイルを読み込めませんでした。', csvNoRows:'データ行が見つかりませんでした。',
+    csvAutoDetectFail:'列を自動検出できませんでした。下の「列の対応」から手動で指定してください。',
+    csvMapParseFail:'選択した列からデータを解釈できませんでした。',
+    csvReplaceConfirm:'既存の{existing}件を削除し、このCSVの{incoming}件で置き換えます。よろしいですか？',
+    csvReplaceDone:'{n}件で置き換えました。',
+    csvImportDone:'{added}件を取り込みました{skipPart}。', csvImportSkipped:'（重複{skipped}件はスキップ）',
+    emptyHint:'まだ記録がありません。上のフォームから追加するか、サンプルで試せます。', loadSample:'サンプルを読み込む',
+    confirmClearAll:'保存されている記録をすべて削除します。よろしいですか？',
+    filterTitle:'フィルタ', filterSub:'グラフと一覧に反映されます', filterReset:'条件をクリア',
+    fPeriodStart:'期間（開始）', fPeriodEnd:'期間（終了）',
+    fDistMin:'距離 最小 (km)', fDistMax:'距離 最大 (km)',
+    fPaceMinFast:'ペース 最速 (分/km)', fPaceMaxSlow:'ペース 最遅 (分/km)',
+    fInOutLabel:'屋内 / 屋外', all:'すべて', outdoorOnly:'屋外のみ', indoorOnly:'屋内のみ', noSpecify:'指定なし',
+    pbTitle:'自己ベスト', pbSub:'その距離以上を走った記録の中での最速ペース', pbNoRecord:'まだ記録なし',
+    pbHalf:'ハーフ+', pbFull:'フル+', pbMeta:'{date} ・ {dist}km走 ・ 目安 {time}',
+    goalLabelField:'目標名', goalTargetField:'目標距離 (km)', goalStartField:'集計開始日', goalEndField:'集計終了日',
+    goalDefaultLabel:'今期の目標', goalFallbackLabel:'目標',
+    ma7:'7日移動平均', regLine:'回帰直線', advToggle:'軸の詳細設定', pngExport:'PNG書き出し',
+    paceMinLbl:'ペース上限(速)', paceMaxLbl:'ペース下限(遅)', distMaxLbl:'週間距離 上限(km)',
+    cmapMinLbl:'配色 最短(km)', cmapMaxLbl:'配色 最長(km)', autoRange:'自動調整',
+    legendDistance:'距離（viridis配色）', legendOut:'屋外 (Out)', legendReg:'回帰直線（トレンド）', legendWeekly:'週間距離（棒）',
+    efTitle:'心拍効率', efSub:'EF = 速度(km/h) ÷ 平均心拍数 × 100・高いほど効率が良い',
+    efMinDistLbl:'対象: 距離 (km) 以上', legendEf:'EF（心拍数入力がある記録のみ）',
+    tableTitle:'記録一覧', exportCsv:'表示中のデータをCSVで書き出す',
+    thDate:'日付', thLocation:'場所', thDistance:'距離 (km)', thPace:'ペース (/km)', thAvgHr:'平均心拍数',
+    edit:'編集', delete:'削除', tableCountMsg:'全{total}件中 {shown}件を表示', tableEmptyRow:'条件に一致する記録がありません',
+    exportEmptyMsg:'書き出せる記録がありません（フィルタ条件を確認してください）。',
+    filterStatusMsg:'全{total}件のうち {matched}件が条件に一致',
+    footerNote:'データはこの端末のブラウザ内（localStorage）だけに保存され、どこにも送信されません。',
+    paceModalTitle:'速度参考表', paceModalSub:'mph → km/h・0.1mph刻み・一定ペース換算の目安タイム', close:'閉じる',
+    half:'ハーフ', full:'フル',
+    chartEmpty:'表示できる記録がありません（フィルタ条件を確認してください）',
+    efChartEmpty:'心拍数入力がある記録がありません（フィルタ条件・距離しきい値を確認してください）',
+    axisPace:'ペース [分/km]', axisWeekly:'週間距離 [km]', axisEf:'EF（km/h ÷ bpm × 100）',
+    tooltipOut:'・OUT', tooltipPace:'ペース', tooltipDistance:'距離',
+    statTotalDist:'総距離（フィルタ後）', statCount:'走行回数', statAvgPace:'平均ペース', statBestPace:'ベストペース',
+    statWeekly:'直近の週間距離', statAvgHr:'平均心拍数', statUnitTimes:'回',
+  },
+  en: {
+    pageTitle:'RUNLINE — See your runs as growth', brandSub:'See your runs as growth.',
+    storagePill:'Saved on this device', storageFail:"Can't save (private mode, etc.)",
+    paceTableBtn:'Pace reference', clearAllBtn:'Delete all data',
+    captureTitle:'Add a record', captureSub:'Manual entry or CSV import',
+    tabManual:'Manual', tabCsv:'CSV import',
+    fDate:'Date', fDist:'Distance (km)', fDurH:'Duration: hr', fDurM:'Duration: min', fDurS:'Duration: sec',
+    fHr:'Avg heart rate', optional:'optional', hrPlaceholder:'e.g. 152',
+    fLocation:'Location', indoor:'Indoor', outdoor:'Outdoor', fPaceAuto:'Pace (auto)',
+    addRecord:'Add record', updateRecord:'Update record', cancel:'Cancel',
+    manualErrMsg:"Please enter a valid date, distance, and duration (duration can't be all zero).",
+    confirmDeleteRecord:'Delete this record?',
+    csvReplaceAll:'Replace all data with this CSV (existing records will be deleted)',
+    dropTitle:'Drop a CSV, or choose a file', dropDesc:"Imported rows are added to your existing records (processed on-device, never sent anywhere)",
+    chooseFile:'Choose file',
+    mapDate:'Date column', mapDist:'Distance column', mapPace:'Pace column', mapInOut:'In/Out column (optional)', mapHr:'Avg HR column (optional)',
+    mapNone:'(none)',
+    mappingHint:"Columns are auto-detected from the header names. Reselect below before applying if they're wrong.",
+    applyMap:'Import with this mapping',
+    csvReadError:"Couldn't read the file.", csvNoRows:'No data rows found.',
+    csvAutoDetectFail:'Couldn’t auto-detect the columns. Set them manually below in "Column mapping."',
+    csvMapParseFail:"Couldn't parse data from the selected columns.",
+    csvReplaceConfirm:'This will delete your existing {existing} records and replace them with {incoming} from this CSV. Continue?',
+    csvReplaceDone:'Replaced with {n} records.',
+    csvImportDone:'Imported {added} records{skipPart}.', csvImportSkipped:' (skipped {skipped} duplicates)',
+    emptyHint:'No records yet. Add one above, or try the sample data.', loadSample:'Load sample data',
+    confirmClearAll:'This will delete all saved records. Continue?',
+    filterTitle:'Filter', filterSub:'Applies to the chart and table', filterReset:'Clear filters',
+    fPeriodStart:'Period (start)', fPeriodEnd:'Period (end)',
+    fDistMin:'Distance min (km)', fDistMax:'Distance max (km)',
+    fPaceMinFast:'Pace fastest (min/km)', fPaceMaxSlow:'Pace slowest (min/km)',
+    fInOutLabel:'Indoor / Outdoor', all:'All', outdoorOnly:'Outdoor only', indoorOnly:'Indoor only', noSpecify:'Unset',
+    pbTitle:'Personal bests', pbSub:'Fastest pace among runs at least that far', pbNoRecord:'No record yet',
+    pbHalf:'Half+', pbFull:'Full+', pbMeta:'{date} · {dist}km run · est. {time}',
+    goalLabelField:'Goal name', goalTargetField:'Goal distance (km)', goalStartField:'Tally start date', goalEndField:'Tally end date',
+    goalDefaultLabel:"This period's goal", goalFallbackLabel:'Goal',
+    ma7:'7-day moving avg', regLine:'Regression line', advToggle:'Axis settings', pngExport:'Export PNG',
+    paceMinLbl:'Pace ceiling (fast)', paceMaxLbl:'Pace floor (slow)', distMaxLbl:'Weekly dist. max (km)',
+    cmapMinLbl:'Color min (km)', cmapMaxLbl:'Color max (km)', autoRange:'Auto-fit',
+    legendDistance:'Distance (viridis scale)', legendOut:'Outdoor (Out)', legendReg:'Regression line (trend)', legendWeekly:'Weekly distance (bars)',
+    efTitle:'Heart-rate efficiency', efSub:'EF = speed(km/h) ÷ avg HR × 100 — higher is more efficient',
+    efMinDistLbl:'Include: distance (km) ≥', legendEf:'EF (records with heart rate only)',
+    tableTitle:'Records', exportCsv:'Export shown data as CSV',
+    thDate:'Date', thLocation:'Location', thDistance:'Distance (km)', thPace:'Pace (/km)', thAvgHr:'Avg HR',
+    edit:'Edit', delete:'Delete', tableCountMsg:'Showing {shown} of {total}', tableEmptyRow:'No records match the filters',
+    exportEmptyMsg:'No records to export (check your filter settings).',
+    filterStatusMsg:'{matched} of {total} match the filters',
+    footerNote:"Data is stored only in this device's browser (localStorage) and never sent anywhere.",
+    paceModalTitle:'Speed reference', paceModalSub:'mph → km/h, 0.1 mph steps, estimated times at constant pace', close:'Close',
+    half:'Half', full:'Full',
+    chartEmpty:'No records to display (check your filter settings)',
+    efChartEmpty:'No records with heart rate data (check filters and the distance threshold)',
+    axisPace:'Pace [min/km]', axisWeekly:'Weekly distance [km]', axisEf:'EF (km/h ÷ bpm × 100)',
+    tooltipOut:' · OUT', tooltipPace:'Pace', tooltipDistance:'Distance',
+    statTotalDist:'Total distance (filtered)', statCount:'Runs', statAvgPace:'Avg pace', statBestPace:'Best pace',
+    statWeekly:'Latest weekly distance', statAvgHr:'Avg heart rate', statUnitTimes:'runs',
+  },
+};
+function tr(key){ const d=I18N[state.lang]||I18N.ja; return d[key]!==undefined ? d[key] : (I18N.ja[key]!==undefined ? I18N.ja[key] : key); }
+function trf(key, vars){ let s=tr(key); for(const k in vars) s=s.split('{'+k+'}').join(vars[k]); return s; }
+function applyI18n(){
+  document.documentElement.lang = state.lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = tr(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{ el.placeholder = tr(el.getAttribute('data-i18n-placeholder')); });
+  document.querySelectorAll('#langSwitch button').forEach(b=>b.classList.toggle('active', b.dataset.lang===state.lang));
+}
+
 const $ = (id)=>document.getElementById(id);
 const storagePill=$('storagePill'), clearAllBtn=$('clearAllBtn');
 const tabBtnManual=$('tabBtnManual'), tabBtnCsv=$('tabBtnCsv'), tabManual=$('tabManual'), tabCsv=$('tabCsv');
@@ -696,7 +846,7 @@ manualForm.addEventListener('submit', (e)=>{
   const dist = parseFloat(mDist.value);
   const pace = computePaceFromInputs();
   if(!d || isNaN(dist) || dist<=0 || isNaN(pace) || pace<=0){
-    manualErr.textContent='日付・距離・時間を正しく入力してください（時間はすべて0にはできません）。';
+    manualErr.textContent=tr('manualErrMsg');
     manualErr.classList.remove('hidden');
     return;
   }
@@ -732,7 +882,7 @@ function enterEditMode(id){
   mDurS.value = Math.round((totalMin - Math.floor(totalMin))*60);
   mHr.value = (rec.avgHr!=null) ? rec.avgHr : '';
   mInOut.value = rec.isOut ? 'out' : 'in';
-  manualSubmitBtn.textContent = '記録を更新';
+  manualSubmitBtn.textContent = tr('updateRecord');
   manualCancelBtn.classList.remove('hidden');
   tabBtnManual.click();
   manualForm.scrollIntoView({behavior:'smooth', block:'center'});
@@ -740,7 +890,7 @@ function enterEditMode(id){
 }
 function exitEditMode(){
   state.editingId = null;
-  manualSubmitBtn.textContent = '記録を追加';
+  manualSubmitBtn.textContent = tr('addRecord');
   manualCancelBtn.classList.add('hidden');
   manualForm.reset();
   mDate.value = todayInputStr();
@@ -748,7 +898,7 @@ function exitEditMode(){
 }
 
 function deleteRecordById(id){
-  if(!window.confirm('この記録を削除しますか？')) return;
+  if(!window.confirm(tr('confirmDeleteRecord'))) return;
   state.records = state.records.filter(r=>r.id!==id);
   if(state.editingId===id) exitEditMode();
   saveStore(state.records);
@@ -769,7 +919,7 @@ function loadFile(file){
   hideCsvMsgs();
   const reader=new FileReader();
   reader.onload=(e)=>parseCsvText(e.target.result);
-  reader.onerror=()=>showCsvErr('ファイルを読み込めませんでした。');
+  reader.onerror=()=>showCsvErr(tr('csvReadError'));
   reader.readAsText(file, 'UTF-8');
 }
 function showCsvErr(msg){ csvErr.textContent=msg; csvErr.classList.remove('hidden'); csvToast.classList.add('hidden'); }
@@ -778,7 +928,7 @@ function hideCsvMsgs(){ csvErr.classList.add('hidden'); csvToast.classList.add('
 
 function parseCsvText(text){
   const res = Papa.parse(text.replace(/^\uFEFF/,''), {header:true, skipEmptyLines:true});
-  if(!res.data || !res.data.length){ showCsvErr('データ行が見つかりませんでした。'); return; }
+  if(!res.data || !res.data.length){ showCsvErr(tr('csvNoRows')); return; }
   state.headers = res.meta.fields || Object.keys(res.data[0]);
   state.rawRows = res.data;
   state.mapping = autoDetectColumns(state.headers, state.rawRows);
@@ -786,7 +936,7 @@ function parseCsvText(text){
   mappingCard.classList.remove('hidden');
   const recs = buildRecordsFromMapping();
   if(recs.length){ importRecords(recs); }
-  else { showCsvErr('列を自動検出できませんでした。下の「列の対応」から手動で指定してください。'); }
+  else { showCsvErr(tr('csvAutoDetectFail')); }
 }
 
 function autoDetectColumns(headers, rows){
@@ -807,7 +957,7 @@ function autoDetectColumns(headers, rows){
 function populateMappingSelects(){
   const opts=(sel,current,allowNone)=>{
     sel.innerHTML='';
-    if(allowNone){ const o=document.createElement('option'); o.value=''; o.textContent='（なし）'; sel.appendChild(o); }
+    if(allowNone){ const o=document.createElement('option'); o.value=''; o.textContent=tr('mapNone'); sel.appendChild(o); }
     state.headers.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; if(h===current) o.selected=true; sel.appendChild(o); });
   };
   opts(mapDate, state.mapping.date, false);
@@ -819,7 +969,7 @@ function populateMappingSelects(){
 applyMapBtn.addEventListener('click', ()=>{
   state.mapping = { date:mapDate.value, dist:mapDist.value, pace:mapPace.value, inout: mapInOut.value||null, hr: mapHr.value||null };
   const recs = buildRecordsFromMapping();
-  if(!recs.length){ showCsvErr('選択した列からデータを解釈できませんでした。'); return; }
+  if(!recs.length){ showCsvErr(tr('csvMapParseFail')); return; }
   importRecords(recs);
 });
 function buildRecordsFromMapping(){
@@ -840,21 +990,21 @@ function buildRecordsFromMapping(){
 }
 function importRecords(recs){
   if(csvReplaceAll.checked){
-    if(!window.confirm(`既存の${state.records.length}件を削除し、このCSVの${recs.length}件で置き換えます。よろしいですか？`)){
+    if(!window.confirm(trf('csvReplaceConfirm', {existing:state.records.length, incoming:recs.length}))){
       fileInput.value='';
       return;
     }
     state.records = recs.map(r=>Object.assign({id:makeId()}, r));
     exitEditMode();
     saveStore(state.records);
-    showCsvToast(`${state.records.length}件で置き換えました。`);
+    showCsvToast(trf('csvReplaceDone', {n:state.records.length}));
     refreshAll();
     return;
   }
   const {merged, added, skipped} = mergeImportDedupe(state.records, recs);
   state.records = merged;
   saveStore(state.records);
-  showCsvToast(`${added}件を取り込みました${skipped?`（重複${skipped}件はスキップ）`:''}。`);
+  showCsvToast(trf('csvImportDone', {added, skipPart: skipped?trf('csvImportSkipped',{skipped}):''}));
   refreshAll();
 }
 
@@ -867,10 +1017,28 @@ sampleBtn.addEventListener('click', ()=>{
   refreshAll();
 });
 clearAllBtn.addEventListener('click', ()=>{
-  if(!window.confirm('保存されている記録をすべて削除します。よろしいですか？')) return;
+  if(!window.confirm(tr('confirmClearAll'))) return;
   state.records = [];
   exitEditMode();
   saveStore(state.records);
+  refreshAll();
+});
+
+const langSwitch=$('langSwitch');
+langSwitch.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-lang]');
+  if(!btn || btn.dataset.lang===state.lang) return;
+  const prevDefaultLabel = tr('goalDefaultLabel'), prevFallbackLabel = tr('goalFallbackLabel');
+  state.lang = btn.dataset.lang;
+  try{ window.localStorage.setItem(LANG_KEY, state.lang); }catch(e){}
+  // carry the goal-name field over to the new language only if it still holds
+  // a default/placeholder value the user never customized
+  if(goalLabelInp.value===prevDefaultLabel || goalLabelInp.value===prevFallbackLabel || goalLabelInp.value===''){
+    goalLabelInp.value = tr('goalDefaultLabel');
+    state.goal.label = goalLabelInp.value;
+  }
+  applyI18n();
+  manualSubmitBtn.textContent = state.editingId ? tr('updateRecord') : tr('addRecord');
   refreshAll();
 });
 
@@ -901,7 +1069,7 @@ function applyFilterAndRender(){
 function fmtDateInput(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 [goalLabelInp,goalTargetInp,goalStartInp,goalEndInp].forEach(inp=>inp.addEventListener('input', applyGoalAndRender));
 function applyGoalAndRender(){
-  state.goal.label = goalLabelInp.value || '目標';
+  state.goal.label = goalLabelInp.value || tr('goalFallbackLabel');
   const t = parseFloat(goalTargetInp.value);
   if(!isNaN(t) && t>0) state.goal.target = t;
   const gs=new Date(goalStartInp.value), ge=new Date(goalEndInp.value);
@@ -979,12 +1147,12 @@ function renderStats(){
   const hrRecs = recs.filter(r=>r.avgHr!=null);
   const avgHr = hrRecs.length ? d3.mean(hrRecs, r=>r.avgHr) : NaN;
   const cards = [
-    {label:'総距離（フィルタ後）', value:total.toFixed(1), unit:'km'},
-    {label:'走行回数', value:String(count), unit:'回'},
-    {label:'平均ペース', value:paceToStr(avgPace), unit:'/km'},
-    {label:'ベストペース', value:paceToStr(bestPace), unit:'/km'},
-    {label:'直近の週間距離', value:thisWeekDist.toFixed(1), unit:'km'},
-    {label:'平均心拍数', value: isNaN(avgHr)?'—':avgHr.toFixed(0), unit:'bpm'},
+    {label:tr('statTotalDist'), value:total.toFixed(1), unit:'km'},
+    {label:tr('statCount'), value:String(count), unit:tr('statUnitTimes')},
+    {label:tr('statAvgPace'), value:paceToStr(avgPace), unit:'/km'},
+    {label:tr('statBestPace'), value:paceToStr(bestPace), unit:'/km'},
+    {label:tr('statWeekly'), value:thisWeekDist.toFixed(1), unit:'km'},
+    {label:tr('statAvgHr'), value: isNaN(avgHr)?'—':avgHr.toFixed(0), unit:'bpm'},
   ];
   statsRow.innerHTML='';
   cards.forEach(c=>{
@@ -1006,8 +1174,8 @@ const PB_DISTANCES = [
   {label:'1km+', km:1},
   {label:'5km+', km:5},
   {label:'10km+', km:10},
-  {label:'ハーフ+', km:21.0975},
-  {label:'フル+', km:42.195},
+  {labelKey:'pbHalf', km:21.0975},
+  {labelKey:'pbFull', km:42.195},
 ];
 function computePersonalBests(records){
   return PB_DISTANCES.map(d=>{
@@ -1022,14 +1190,15 @@ function renderPersonalBests(){
   pbRow.innerHTML='';
   bests.forEach(pb=>{
     const div=document.createElement('div'); div.className='pb-card';
+    const label = pb.labelKey ? tr(pb.labelKey) : pb.label;
     if(!pb.best){
-      div.innerHTML=`<div class="pb-label">${pb.label}</div><div class="pb-empty">まだ記録なし</div>`;
+      div.innerHTML=`<div class="pb-label">${label}</div><div class="pb-empty">${tr('pbNoRecord')}</div>`;
     }else{
       const dateStr = pb.best.date.getFullYear()+'/'+String(pb.best.date.getMonth()+1).padStart(2,'0')+'/'+String(pb.best.date.getDate()).padStart(2,'0');
       const estTime = formatDurationFromMinutes(pb.best.pace*pb.km);
-      div.innerHTML = `<div class="pb-label">${pb.label}</div>
+      div.innerHTML = `<div class="pb-label">${label}</div>
         <div class="pb-pace">${paceToStr(pb.best.pace)}<small>/km</small></div>
-        <div class="pb-meta">${dateStr} ・ ${pb.best.distance.toFixed(1)}km走 ・ 目安 ${estTime}</div>`;
+        <div class="pb-meta">${trf('pbMeta', {date:dateStr, dist:pb.best.distance.toFixed(1), time:estTime})}</div>`;
     }
     pbRow.appendChild(div);
   });
@@ -1061,7 +1230,7 @@ function renderChart(){
   if(!recs.length || !state.paceRange || !state.distMaxOverride || !state.cmapRange){
     svg.append('text').attr('x',W/2).attr('y',H/2).attr('text-anchor','middle')
       .attr('font-family',"'Inter',sans-serif").attr('font-weight',600)
-      .attr('fill','#7A7561').attr('font-size',15).text('表示できる記録がありません（フィルタ条件を確認してください）');
+      .attr('fill','#7A7561').attr('font-size',15).text(tr('chartEmpty'));
     return;
   }
 
@@ -1164,12 +1333,12 @@ function renderChart(){
     const cx = (x(mStart)+x(mEnd))/2;
     const total = d3.sum(recs.filter(r=>r.date>=mStart && r.date<mEnd), r=>r.distance);
     const yearChanged = lastYearShown===null || mStart.getFullYear()!==lastYearShown;
-    const yearPrefix = yearChanged ? mStart.getFullYear()+'年' : '';
-    const monthStr = (mStart.getMonth()+1)+'月';
+    const monthOnly = formatMonthLabel(mStart, false);
+    const monthWithYear = yearChanged ? formatMonthLabel(mStart, true) : monthOnly;
     const candidates = [
-      `${yearPrefix}${monthStr}${total>0?' '+total.toFixed(0)+'km':''}`,
-      `${yearPrefix}${monthStr}`,
-      monthStr,
+      `${monthWithYear}${total>0?' '+total.toFixed(0)+'km':''}`,
+      monthWithYear,
+      monthOnly,
     ];
     for(const label of candidates){
       const t = g.append('text').attr('x',cx).attr('y',plotH+42).attr('text-anchor','middle')
@@ -1188,7 +1357,7 @@ function renderChart(){
   g.append('rect').attr('x',0).attr('y',0).attr('width',plotW).attr('height',plotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
 
   // year badge, always visible regardless of what date range is filtered in
-  const yearBadgeText = x0.getFullYear()===x1raw.getFullYear() ? `${x0.getFullYear()}年` : `${x0.getFullYear()}–${x1raw.getFullYear()}年`;
+  const yearBadgeText = formatYearBadge(x0.getFullYear(), x1raw.getFullYear());
   const badgeW = yearBadgeText.length*8+16;
   g.append('rect').attr('x',8).attr('y',8).attr('width',badgeW).attr('height',22).attr('rx',5)
     .attr('fill','#FFFFFF').attr('fill-opacity',0.88).attr('stroke',INK).attr('stroke-width',1);
@@ -1197,9 +1366,9 @@ function renderChart(){
 
   // axis labels
   g.append('text').attr('x',-plotH/2).attr('y',-58).attr('transform','rotate(-90)').attr('text-anchor','middle')
-    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('ペース [分/km]');
+    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text(tr('axisPace'));
   g.append('text').attr('x',plotW+32).attr('y',-plotH/2).attr('transform',`rotate(90, ${plotW+32}, ${-plotH/2})`).attr('text-anchor','middle')
-    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',13).attr('font-weight',700).text('週間距離 [km]');
+    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',13).attr('font-weight',700).text(tr('axisWeekly'));
 
   // colorbar (viridis) — value labels sit above/below it; the swatch meaning is in the HTML legend below the chart
   const cbX = plotW+46, cbW=12, cbY=10, cbH=plotH-20;
@@ -1231,7 +1400,7 @@ function renderEfficiencyChart(){
   if(!recs.length){
     svg.append('text').attr('x',EF_W/2).attr('y',EF_H/2).attr('text-anchor','middle')
       .attr('font-family',"'Inter',sans-serif").attr('font-weight',600)
-      .attr('fill','#7A7561').attr('font-size',15).text('心拍数入力がある記録がありません（フィルタ条件・距離しきい値を確認してください）');
+      .attr('fill','#7A7561').attr('font-size',15).text(tr('efChartEmpty'));
     return;
   }
 
@@ -1289,7 +1458,7 @@ function renderEfficiencyChart(){
   g.append('rect').attr('x',0).attr('y',0).attr('width',efPlotW).attr('height',efPlotH).attr('fill','none').attr('stroke',INK).attr('stroke-width',1.4);
 
   g.append('text').attr('x',-efPlotH/2).attr('y',-58).attr('transform','rotate(-90)').attr('text-anchor','middle')
-    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text('EF（km/h ÷ bpm × 100）');
+    .attr('font-family',FONT_UI).attr('fill',INK).attr('font-size',14).attr('font-weight',700).text(tr('axisEf'));
 }
 
 function showEfTooltip(event,d){
@@ -1303,7 +1472,7 @@ function showEfTooltip(event,d){
 
 function showTooltip(event,d){
   const dateStr = d.date.getFullYear()+'/'+String(d.date.getMonth()+1).padStart(2,'0')+'/'+String(d.date.getDate()).padStart(2,'0');
-  tooltip.innerHTML = `<div class="tt-date">${dateStr}${d.isOut ? ' <span class="tt-out">・OUT</span>' : ''}</div>ペース ${paceToStr(d.pace)}/km<br>距離 ${d.distance.toFixed(1)} km`;
+  tooltip.innerHTML = `<div class="tt-date">${dateStr}${d.isOut ? ` <span class="tt-out">${tr('tooltipOut')}</span>` : ''}</div>${tr('tooltipPace')} ${paceToStr(d.pace)}/km<br>${tr('tooltipDistance')} ${d.distance.toFixed(1)} km`;
   const containerRect = document.querySelector('.chart-wrap').getBoundingClientRect();
   tooltip.style.left = (event.clientX - containerRect.left + 14) + 'px';
   tooltip.style.top = (event.clientY - containerRect.top - 10) + 'px';
@@ -1359,28 +1528,28 @@ function renderTable(){
     if(key==='avgHr'){ va=(va==null?-1:va); vb=(vb==null?-1:vb); }
     return dir==='asc' ? (va-va===0 && vb-vb===0 ? va-vb : String(va).localeCompare(String(vb))) : (va-va===0 && vb-vb===0 ? vb-va : String(vb).localeCompare(String(va)));
   });
-  tableCount.textContent = `全${state.records.length}件中 ${recs.length}件を表示`;
+  tableCount.textContent = trf('tableCountMsg', {total:state.records.length, shown:recs.length});
   recordsTbody.innerHTML='';
   if(!recs.length){
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td colspan="6" class="table-empty">条件に一致する記録がありません</td>`;
-    recordsTbody.appendChild(tr);
+    const rowEl=document.createElement('tr');
+    rowEl.innerHTML=`<td colspan="6" class="table-empty">${tr('tableEmptyRow')}</td>`;
+    recordsTbody.appendChild(rowEl);
     return;
   }
   recs.forEach(r=>{
-    const tr=document.createElement('tr');
+    const rowEl=document.createElement('tr');
     const dateStr = r.date.getFullYear()+'/'+String(r.date.getMonth()+1).padStart(2,'0')+'/'+String(r.date.getDate()).padStart(2,'0');
-    tr.innerHTML = `
+    rowEl.innerHTML = `
       <td>${dateStr}</td>
-      <td>${r.isOut?'<span class="out-badge">屋外</span>':'屋内'}</td>
+      <td>${r.isOut?`<span class="out-badge">${tr('outdoor')}</span>`:tr('indoor')}</td>
       <td>${r.distance.toFixed(1)}</td>
       <td>${paceToStr(r.pace)}</td>
       <td>${r.avgHr!=null ? r.avgHr.toFixed(0) : '—'}</td>
       <td><div class="row-actions">
-        <button class="icon-btn" data-act="edit" data-id="${r.id}">編集</button>
-        <button class="icon-btn danger" data-act="del" data-id="${r.id}">削除</button>
+        <button class="icon-btn" data-act="edit" data-id="${r.id}">${tr('edit')}</button>
+        <button class="icon-btn danger" data-act="del" data-id="${r.id}">${tr('delete')}</button>
       </div></td>`;
-    recordsTbody.appendChild(tr);
+    recordsTbody.appendChild(rowEl);
   });
   recordsTbody.querySelectorAll('button[data-act="edit"]').forEach(b=>b.addEventListener('click', ()=>enterEditMode(b.dataset.id)));
   recordsTbody.querySelectorAll('button[data-act="del"]').forEach(b=>b.addEventListener('click', ()=>deleteRecordById(b.dataset.id)));
@@ -1398,7 +1567,7 @@ function triggerDownload(blob, filename){
 
 exportCsvBtn.addEventListener('click', ()=>{
   const recs = getFilteredRecords();
-  if(!recs.length){ tableMsg.textContent='書き出せる記録がありません（フィルタ条件を確認してください）。'; tableMsg.classList.remove('hidden'); return; }
+  if(!recs.length){ tableMsg.textContent=tr('exportEmptyMsg'); tableMsg.classList.remove('hidden'); return; }
   tableMsg.classList.add('hidden');
   const lines = ["Date,In/Out,Distance[km],mm'ss/km,AvgHR[bpm]"];
   recs.forEach(r=>{
@@ -1436,14 +1605,14 @@ function buildPaceRefTable(){
     const paceMinPerKm = 60/kmh;
     const times = REF_DISTANCES.map(d=>formatDurationFromMinutes(paceMinPerKm*d.km));
 
-    const tr=document.createElement('tr');
-    tr.innerHTML = `
+    const rowEl=document.createElement('tr');
+    rowEl.innerHTML = `
       <td>${mph.toFixed(1)}</td>
       <td>${kmh.toFixed(2)}</td>
       <td>${paceToStr(paceMinPerKm)}</td>
-      ${times.map(t=>`<td>${t}</td>`).join('')}
+      ${times.map(tm=>`<td>${tm}</td>`).join('')}
     `;
-    paceRefTbody.appendChild(tr);
+    paceRefTbody.appendChild(rowEl);
   }
 }
 paceTableBtn.addEventListener('click', ()=>{
@@ -1458,7 +1627,7 @@ document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') paceModalOverla
    17. RENDER ALL
    ========================================================= */
 function refreshAll(){
-  storagePill.textContent = storageOk ? 'この端末に保存' : '保存できません（プライベートモード等）';
+  storagePill.textContent = storageOk ? tr('storagePill') : tr('storageFail');
   emptyHint.classList.toggle('hidden', state.records.length>0);
   resetGoalDefaults();
   resetAxisRanges();
@@ -1472,7 +1641,7 @@ function renderAll(){
   renderChart();
   renderEfficiencyChart();
   renderTable();
-  filterStatus.textContent = `全${state.records.length}件のうち ${getFilteredRecords().length}件が条件に一致`;
+  filterStatus.textContent = trf('filterStatusMsg', {total:state.records.length, matched:getFilteredRecords().length});
 }
 
 let chartResizeTimer;
@@ -1481,6 +1650,11 @@ window.addEventListener('resize', ()=>{
   chartResizeTimer = setTimeout(()=>{ renderChart(); renderEfficiencyChart(); }, 150);
 });
 
+applyI18n();
+if(state.lang==='en' && goalLabelInp.value==='今期の目標'){
+  goalLabelInp.value = tr('goalDefaultLabel');
+  state.goal.label = goalLabelInp.value;
+}
 refreshAll();
 
 })();
