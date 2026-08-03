@@ -431,14 +431,15 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
     <div class="table-wrap modal-table-wrap">
       <table id="paceRefTable">
         <colgroup>
-          <col style="width:9%"><col style="width:11%"><col style="width:11%"><col style="width:11%">
-          <col style="width:11%"><col style="width:15.5%"><col style="width:15.5%"><col style="width:15.5%">
+          <col style="width:8%"><col style="width:10%"><col style="width:10%"><col style="width:10%">
+          <col style="width:10%"><col style="width:10%"><col style="width:14%"><col style="width:14%"><col style="width:14%">
         </colgroup>
         <thead>
           <tr>
             <th>mph</th>
             <th>km/h</th>
             <th data-i18n="thPace">ペース (/km)</th>
+            <th data-i18n="thPaceMi">ペース (/mi)</th>
             <th>1km</th>
             <th>5km</th>
             <th>10km</th>
@@ -709,7 +710,7 @@ const I18N = {
     efTitle:'心拍効率', efSub:'EF = 速度(km/h) ÷ 平均心拍数 × 100・高いほど効率が良い',
     efMinDistLbl:'対象: 距離 (km) 以上', legendEf:'EF（心拍数入力がある記録のみ）',
     tableTitle:'記録一覧', exportCsv:'表示中のデータをCSVで書き出す',
-    thDate:'日付', thLocation:'場所', thDistance:'距離 (km)', thPace:'ペース (/km)', thAvgHr:'平均心拍数',
+    thDate:'日付', thLocation:'場所', thDistance:'距離 (km)', thPace:'ペース (/km)', thPaceMi:'ペース (/mi)', thAvgHr:'平均心拍数',
     edit:'編集', delete:'削除', tableCountMsg:'全{total}件中 {shown}件を表示', tableEmptyRow:'条件に一致する記録がありません',
     exportEmptyMsg:'書き出せる記録がありません（フィルタ条件を確認してください）。',
     filterStatusMsg:'全{total}件のうち {matched}件が条件に一致',
@@ -766,7 +767,7 @@ const I18N = {
     efTitle:'Heart-rate efficiency', efSub:'EF = speed(km/h) ÷ avg HR × 100 — higher is more efficient',
     efMinDistLbl:'Include: distance (km) ≥', legendEf:'EF (records with heart rate only)',
     tableTitle:'Records', exportCsv:'Export shown data as CSV',
-    thDate:'Date', thLocation:'Location', thDistance:'Distance (km)', thPace:'Pace (/km)', thAvgHr:'Avg HR',
+    thDate:'Date', thLocation:'Location', thDistance:'Distance (km)', thPace:'Pace (/km)', thPaceMi:'Pace (/mi)', thAvgHr:'Avg HR',
     edit:'Edit', delete:'Delete', tableCountMsg:'Showing {shown} of {total}', tableEmptyRow:'No records match the filters',
     exportEmptyMsg:'No records to export (check your filter settings).',
     filterStatusMsg:'{matched} of {total} match the filters',
@@ -1622,6 +1623,7 @@ function buildPaceRefTable(){
     const mph = i/10;
     const kmh = mph*MPH_TO_KMH;
     const paceMinPerKm = 60/kmh;
+    const paceMinPerMile = 60/mph;
     const times = REF_DISTANCES.map(d=>formatDurationFromMinutes(paceMinPerKm*d.km));
 
     const rowEl=document.createElement('tr');
@@ -1629,6 +1631,7 @@ function buildPaceRefTable(){
       <td>${mph.toFixed(1)}</td>
       <td>${kmh.toFixed(2)}</td>
       <td>${paceToStr(paceMinPerKm)}</td>
+      <td>${paceToStr(paceMinPerMile)}</td>
       ${times.map(tm=>`<td>${tm}</td>`).join('')}
     `;
     paceRefTbody.appendChild(rowEl);
