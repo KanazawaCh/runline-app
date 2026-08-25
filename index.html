@@ -272,13 +272,13 @@ footer.note{margin-top:-6px; font-size:11.5px; color:var(--muted-2); text-align:
     <div id="tabCsv" class="hidden">
       <label class="check-pill" style="margin-bottom:10px;"><input type="checkbox" id="csvReplaceAll"> <span data-i18n="csvReplaceAll">このCSVで全データを置き換える（既存の記録は削除されます）</span></label>
       <div class="dropzone" id="dropzone">
-        <h3 data-i18n="dropTitle">CSVをドロップ、または選択</h3>
+        <h3 data-i18n="dropTitle">CSV・GPX・TCXをドロップ、または選択</h3>
 
-        <p data-i18n="dropDesc">取り込んだ内容は既存の記録に追加されます（端末内で処理・送信されません）</p>
+        <p data-i18n="dropDesc">取り込んだ内容は既存の記録に追加されます（端末内で処理・送信されません）・GPX/TCXは複数ファイルをまとめて選択できます</p>
         <div class="dz-actions">
           <button class="btn btn-primary btn-sm" id="browseBtn" type="button" data-i18n="chooseFile">ファイルを選ぶ</button>
         </div>
-        <input type="file" id="fileInput" accept=".csv,text/csv">
+        <input type="file" id="fileInput" accept=".csv,.gpx,.tcx,text/csv" multiple>
       </div>
       <div class="mapping-card hidden" id="mappingCard">
         <div class="mapping-grid">
@@ -679,8 +679,10 @@ const I18N = {
     addRecord:'記録を追加', updateRecord:'記録を更新', cancel:'キャンセル',
     manualErrMsg:'日付・距離・時間を正しく入力してください（時間はすべて0にはできません）。',
     confirmDeleteRecord:'この記録を削除しますか？',
-    csvReplaceAll:'このCSVで全データを置き換える（既存の記録は削除されます）',
-    dropTitle:'CSVをドロップ、または選択', dropDesc:'取り込んだ内容は既存の記録に追加されます（端末内で処理・送信されません）',
+    csvReplaceAll:'このファイルで全データを置き換える（既存の記録は削除されます）',
+    dropTitle:'CSV・GPX・TCXをドロップ、または選択', dropDesc:'取り込んだ内容は既存の記録に追加されます（端末内で処理・送信されません）・GPX/TCXは複数ファイルをまとめて選択できます',
+    trackParseFailAll:'ファイルを解析できませんでした。GarminやStravaから書き出したGPX/TCXファイルか確認してください。',
+    trackImportFailed:'（{failed}件は解析できませんでした）',
     chooseFile:'ファイルを選ぶ',
     mapDate:'日付列', mapDist:'距離列', mapPace:'ペース列', mapInOut:'In/Out列（任意）', mapHr:'平均心拍数列（任意）',
     mapNone:'（なし）',
@@ -736,8 +738,10 @@ const I18N = {
     addRecord:'Add record', updateRecord:'Update record', cancel:'Cancel',
     manualErrMsg:"Please enter a valid date, distance, and duration (duration can't be all zero).",
     confirmDeleteRecord:'Delete this record?',
-    csvReplaceAll:'Replace all data with this CSV (existing records will be deleted)',
-    dropTitle:'Drop a CSV, or choose a file', dropDesc:"Imported rows are added to your existing records (processed on-device, never sent anywhere)",
+    csvReplaceAll:'Replace all data with this file (existing records will be deleted)',
+    dropTitle:'Drop CSV, GPX, or TCX files, or choose files', dropDesc:"Imported rows are added to your existing records (processed on-device, never sent anywhere) · GPX/TCX supports selecting multiple files at once",
+    trackParseFailAll:"Couldn't parse the file(s). Check that they're GPX/TCX files exported from Garmin or Strava.",
+    trackImportFailed:'({failed} file(s) could not be parsed)',
     chooseFile:'Choose file',
     mapDate:'Date column', mapDist:'Distance column', mapPace:'Pace column', mapInOut:'In/Out column (optional)', mapHr:'Avg HR column (optional)',
     mapNone:'(none)',
@@ -920,10 +924,114 @@ function deleteRecordById(id){
    ========================================================= */
 browseBtn.addEventListener('click', ()=>fileInput.click());
 dropzone.addEventListener('click', (e)=>{ if(e.target===browseBtn) return; fileInput.click(); });
-fileInput.addEventListener('change', (e)=>{ if(e.target.files[0]) loadFile(e.target.files[0]); });
+fileInput.addEventListener('change', (e)=>{ if(e.target.files.length) loadFiles(e.target.files); fileInput.value=''; });
 ['dragover','dragenter'].forEach(ev=>dropzone.addEventListener(ev,(e)=>{ e.preventDefault(); dropzone.classList.add('dragover'); }));
 ['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,(e)=>{ e.preventDefault(); dropzone.classList.remove('dragover'); }));
-dropzone.addEventListener('drop',(e)=>{ const f=e.dataTransfer.files[0]; if(f) loadFile(f); });
+dropzone.addEventListener('drop',(e)=>{ if(e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
+
+function getFileExt(filename){
+  const m = /\.([a-z0-9]+)$/i.exec(filename);
+  return m ? m[1].toLowerCase() : '';
+}
+// Routes by extension: a single CSV keeps the existing column-mapping flow
+// (its columns vary too much to guess blindly), while GPX/TCX have a fixed,
+// well-known shape so any number of them can be parsed and imported directly.
+function loadFiles(fileList){
+  hideCsvMsgs();
+  const files = Array.from(fileList);
+  const trackFiles = files.filter(f=>['gpx','tcx'].includes(getFileExt(f.name)));
+  if(trackFiles.length){
+    Promise.all(trackFiles.map(readTrackFile)).then(results=>{
+      const records = results.filter(r=>r!=null);
+      const failed = results.length - records.length;
+      if(!records.length){ showCsvErr(tr('trackParseFailAll')); return; }
+      importRecords(records, failed ? trf('trackImportFailed', {failed}) : '');
+    });
+    return;
+  }
+  const csvFile = files.find(f=>getFileExt(f.name)==='csv');
+  if(csvFile) loadFile(csvFile);
+}
+function readTrackFile(file){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=(e)=>{
+      let rec=null;
+      try{ rec = getFileExt(file.name)==='gpx' ? parseGpxText(e.target.result) : parseTcxText(e.target.result); }catch(err){ rec=null; }
+      resolve(rec);
+    };
+    reader.onerror=()=>resolve(null);
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+function haversineMeters(lat1,lon1,lat2,lon2){
+  const R=6371000, toRad=deg=>deg*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function findHrValue(el){
+  // GPX HR extensions vary by exporter (Garmin TrackPointExtension, gpxtpx, ns3, etc.)
+  // so match by local tag name "hr" rather than a specific namespace prefix.
+  for(const node of el.getElementsByTagName('*')){
+    const name = node.localName || node.tagName;
+    if(/^hr$/i.test(name)){ const v=parseFloat(node.textContent); if(!isNaN(v)) return v; }
+  }
+  return null;
+}
+function parseGpxText(text){
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if(doc.querySelector('parsererror')) return null;
+  const trkpts = Array.from(doc.getElementsByTagName('trkpt'));
+  if(trkpts.length<2) return null;
+  let totalDist=0, prevLat=null, prevLon=null, hrSum=0, hrCount=0;
+  const times=[];
+  trkpts.forEach(pt=>{
+    const lat=parseFloat(pt.getAttribute('lat')), lon=parseFloat(pt.getAttribute('lon'));
+    if(prevLat!=null && !isNaN(lat) && !isNaN(lon)) totalDist += haversineMeters(prevLat,prevLon,lat,lon);
+    if(!isNaN(lat) && !isNaN(lon)){ prevLat=lat; prevLon=lon; }
+    const timeEl = pt.getElementsByTagName('time')[0];
+    if(timeEl){ const d=new Date(timeEl.textContent); if(!isNaN(d.getTime())) times.push(d); }
+    const hr = findHrValue(pt);
+    if(hr!=null){ hrSum+=hr; hrCount++; }
+  });
+  if(times.length<2 || totalDist<=0) return null;
+  const durationMin = (times[times.length-1]-times[0])/60000;
+  const distanceKm = totalDist/1000;
+  if(durationMin<=0 || distanceKm<=0) return null;
+  const start = times[0];
+  return {
+    date: new Date(start.getFullYear(), start.getMonth(), start.getDate()),
+    distance: distanceKm, pace: durationMin/distanceKm, isOut: true,
+    avgHr: hrCount ? Math.round(hrSum/hrCount) : null,
+  };
+}
+function parseTcxText(text){
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if(doc.querySelector('parsererror')) return null;
+  const laps = Array.from(doc.getElementsByTagName('Lap'));
+  if(!laps.length) return null;
+  let totalDistM=0, totalTimeS=0, hrWeighted=0, hrWeight=0, startTime=null;
+  laps.forEach(lap=>{
+    const dist = parseFloat(lap.getElementsByTagName('DistanceMeters')[0]?.textContent);
+    const time = parseFloat(lap.getElementsByTagName('TotalTimeSeconds')[0]?.textContent);
+    const hrVal = parseFloat(lap.getElementsByTagName('AverageHeartRateBpm')[0]?.getElementsByTagName('Value')[0]?.textContent);
+    if(!isNaN(dist)) totalDistM += dist;
+    if(!isNaN(time)) totalTimeS += time;
+    if(!isNaN(hrVal) && !isNaN(time)){ hrWeighted += hrVal*time; hrWeight += time; }
+    if(!startTime){ const st=lap.getAttribute('StartTime'); if(st){ const d=new Date(st); if(!isNaN(d.getTime())) startTime=d; } }
+  });
+  if(totalDistM<=0 || totalTimeS<=0) return null;
+  const distanceKm = totalDistM/1000;
+  const durationMin = totalTimeS/60;
+  const date = startTime || new Date();
+  const isOut = doc.getElementsByTagName('Position').length > 0;
+  return {
+    date: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+    distance: distanceKm, pace: durationMin/distanceKm, isOut,
+    avgHr: hrWeight ? Math.round(hrWeighted/hrWeight) : null,
+  };
+}
 
 function loadFile(file){
   hideCsvMsgs();
@@ -998,7 +1106,8 @@ function buildRecordsFromMapping(){
   }
   return recs;
 }
-function importRecords(recs){
+function importRecords(recs, extraNote){
+  const note = extraNote ? ' '+extraNote : '';
   if(csvReplaceAll.checked){
     if(!window.confirm(trf('csvReplaceConfirm', {existing:state.records.length, incoming:recs.length}))){
       fileInput.value='';
@@ -1007,14 +1116,14 @@ function importRecords(recs){
     state.records = recs.map(r=>Object.assign({id:makeId()}, r));
     exitEditMode();
     saveStore(state.records);
-    showCsvToast(trf('csvReplaceDone', {n:state.records.length}));
+    showCsvToast(trf('csvReplaceDone', {n:state.records.length})+note);
     refreshAll();
     return;
   }
   const {merged, added, skipped} = mergeImportDedupe(state.records, recs);
   state.records = merged;
   saveStore(state.records);
-  showCsvToast(trf('csvImportDone', {added, skipPart: skipped?trf('csvImportSkipped',{skipped}):''}));
+  showCsvToast(trf('csvImportDone', {added, skipPart: skipped?trf('csvImportSkipped',{skipped}):''})+note);
   refreshAll();
 }
 
